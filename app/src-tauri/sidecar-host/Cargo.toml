@@ -1,0 +1,25 @@
+[package]
+name = "openlocate-sidecar-host"
+version = "0.1.0"
+description = "Tauri-free sidecar host for OpenLocate: process supervision, line classification, error mapping, command resolution"
+license = "GPL-3.0-or-later"
+edition = "2021"
+rust-version = "1.90"
+publish = false
+
+[dependencies]
+serde_json = "1"
+tokio = { version = "1", features = ["sync", "time"] }
+
+[lints]
+workspace = true
+
+[dev-dependencies]
+tokio = { version = "1", features = ["sync", "time", "rt", "macros"] }
+
+# Test helper: a tiny stand-in for the Python sidecar, used by tests/supervisor.rs.
+[[bin]]
+name = "fake-sidecar"
+path = "tests/support/fake_sidecar.rs"
+test = false
+doctest = false

@@ -124,6 +124,15 @@ The route engine, scheduler and RPC layer only ever see this interface. Backends
   the user with a plain-language message and a suggested fix.
 - Stdio rather than a localhost port: nothing listens on the network, so no other program on
   the machine can drive the phone, and there is no port to clash.
+- **One contract file, `protocol/contract.json`.** It lists every request, response, error and
+  notification as a scripted session, with fixed field names (camelCase) and enum values (lower
+  snake_case). The Python tests replay it against the mock backend and the TypeScript tests
+  check it against the UI's runtime guards, so the two sides cannot drift apart unnoticed.
+  Change the contract first, then both sides.
+- Protocol-level failures (bad JSON, unknown method) use the JSON-RPC numeric codes and carry
+  `data.code = "INTERNAL"`; bad parameters use `-32602` with `INVALID_PARAMS`.
+- A line may be at most 1 MiB. Long routes are produced inside the sidecar (routing, GPX), so
+  the UI does not need to send large point lists.
 
 ### 2.4 UI shell: Tauri 2, with the sidecar managed by our own Rust code
 
@@ -133,11 +142,16 @@ Tauri 2.12 (stable), React, TypeScript, Vite. Rust 1.90 or newer.
   `std::process::Command`, reads stdout line by line, and exposes one command (`rpc`) and one
   event stream to the UI. That is less permission surface and gives us full control of the
   child's lifetime.
+- The process handling lives in its own crate, `app/src-tauri/sidecar-host`, which does not
+  depend on Tauri. It can therefore be compiled and tested on any machine, including against
+  the real Python sidecar. `src-tauri/src` is only the glue that turns its events into Tauri
+  events.
 - Packaging: PyInstaller **one-folder** build shipped through `bundle.resources`, not a
   one-file `externalBin`. A one-file build starts slowly (it unpacks itself each launch) and on
   Windows the process Tauri sees is only a launcher, so killing it can leave the real Python
-  process running. We also put the child in a Windows Job Object so it dies with the app, and
-  the sidecar exits on its own when stdin closes.
+  process running. The sidecar exits on its own when stdin closes, and the app kills it if it
+  has not exited within 2 s. A Windows Job Object (so the child dies even if the app crashes)
+  is planned for Milestone 6.
 - In development the Rust side runs `python -m openlocate` from the sidecar's virtualenv.
 - Electron is not needed: with no elevation and a plain child process, nothing about Tauri is
   in the way.
@@ -210,7 +224,9 @@ sidecar/                 Python package: openlocate
 app/                     Tauri 2 + React + TypeScript
   src/                   UI
   src-tauri/             Rust shell
-docs/
+    sidecar-host/        child-process supervisor, no Tauri dependency
+protocol/contract.json   the shared JSON-RPC message contract
+docs/                    this file, and task specs in docs/specs/
 .claude/agents/          builder, scout, docs subagents
 ```
 

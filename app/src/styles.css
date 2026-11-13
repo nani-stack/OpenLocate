@@ -1,0 +1,191 @@
+:root {
+  --bg: #f6f7f9;
+  --panel: #ffffff;
+  --text: #1d2330;
+  --muted: #5f6b7a;
+  --border: #d5dae1;
+  --accent: #1f6feb;
+  --ok: #1a7f37;
+  --bad: #b42318;
+  --bad-bg: #fdecea;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 15px;
+  color: var(--text);
+  background: var(--bg);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #15181d;
+    --panel: #1e232a;
+    --text: #e6e9ee;
+    --muted: #9aa5b3;
+    --border: #353c46;
+    --accent: #4c8dff;
+    --ok: #3fb950;
+    --bad: #ff7b72;
+    --bad-bg: #3a1d1d;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+}
+
+.app {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.header h1 {
+  margin: 0 0 8px;
+  font-size: 1.4rem;
+}
+
+.facts,
+.readout {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 4px 12px;
+  margin: 0;
+}
+
+.facts dt,
+.readout dt {
+  color: var(--muted);
+}
+
+.facts dd,
+.readout dd {
+  margin: 0;
+}
+
+.status-running {
+  color: var(--ok);
+}
+
+.status-exited {
+  color: var(--bad);
+}
+
+.mono {
+  font-family: ui-monospace, "Cascadia Mono", Menlo, Consolas, monospace;
+  word-break: break-all;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.panels {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 12px;
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 16px;
+}
+
+.panel h2 {
+  margin: 0 0 8px;
+  font-size: 1.1rem;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: flex-end;
+  margin: 8px 0;
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 6px 0;
+}
+
+label.checkbox {
+  flex-direction: row;
+  align-items: center;
+}
+
+input,
+select,
+button {
+  font: inherit;
+  color: inherit;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 8px;
+}
+
+input[aria-invalid="true"] {
+  border-color: var(--bad);
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.field-error {
+  color: var(--bad);
+  margin: 0 0 6px;
+}
+
+.devices {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0;
+}
+
+.devices li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-top: 1px solid var(--border);
+}
+
+.errors {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.error {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  background: var(--bad-bg);
+  color: var(--bad);
+  border: 1px solid var(--bad);
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+
+.error-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
