@@ -1,0 +1,128 @@
+{
+  "$comment": [
+    "Single source of truth for the JSON-RPC messages between the app and the sidecar.",
+    "Both test suites load this file: sidecar/tests replays `session` against the mock backend,",
+    "and app/src/rpc tests check every result and notification against the TypeScript guards.",
+    "Matching rules: a value is compared exactly, except these placeholders:",
+    "  \"<string>\"  any string        \"<number>\"  any finite number",
+    "  \"<int>\"     any integer       \"<bool>\"    any boolean",
+    "  \"<latlon>\"  an object {lat: number, lon: number}",
+    "Objects must have exactly the listed keys (no extra, none missing).",
+    "Field names are camelCase. Enum values are lower snake_case."
+  ],
+  "version": 1,
+  "enums": {
+    "deviceState": ["disconnected", "connecting", "needs_trust", "needs_developer_mode", "mounting_image", "ready", "error"],
+    "connection": ["usb", "wifi", "mock"],
+    "playbackState": ["idle", "playing", "paused", "finished"],
+    "locationSource": ["teleport", "playback"],
+    "errorCode": ["NOT_CONNECTED", "DEVICE_NOT_FOUND", "DEVICE_DISCONNECTED", "TRUST_REQUIRED", "DEVELOPER_MODE_OFF", "INVALID_PARAMS", "INVALID_STATE", "NO_ROUTE_LOADED", "INTERNAL"]
+  },
+  "session": [
+    {
+      "name": "app info",
+      "request": { "method": "app.info" },
+      "result": { "version": "<string>", "backend": "mock", "logFile": "<string>" }
+    },
+    {
+      "name": "teleport before connecting fails",
+      "request": { "method": "location.set", "params": { "lat": 48.8584, "lon": 2.2945 } },
+      "error": { "code": "NOT_CONNECTED", "message": "<string>", "fix": "<string>", "detail": null }
+    },
+    {
+      "name": "list devices",
+      "request": { "method": "device.list" },
+      "result": {
+        "devices": [
+          { "id": "MOCK-0001", "name": "Mock iPhone", "model": "<string>", "osVersion": "27.2.1", "connection": "mock", "state": "disconnected" }
+        ]
+      }
+    },
+    {
+      "name": "connect to unknown device fails",
+      "request": { "method": "device.connect", "params": { "id": "NOPE" } },
+      "error": { "code": "DEVICE_NOT_FOUND", "message": "<string>", "fix": "<string>", "detail": "<string>" }
+    },
+    {
+      "name": "connect",
+      "request": { "method": "device.connect", "params": { "id": "MOCK-0001" } },
+      "result": { "id": "MOCK-0001", "name": "Mock iPhone", "model": "<string>", "osVersion": "27.2.1", "connection": "mock", "state": "ready" }
+    },
+    {
+      "name": "teleport",
+      "request": { "method": "location.set", "params": { "lat": 48.8584, "lon": 2.2945 } },
+      "result": {},
+      "notifications": [
+        { "method": "location.updated", "params": { "lat": 48.8584, "lon": 2.2945, "source": "teleport" } }
+      ]
+    },
+    {
+      "name": "teleport with bad latitude fails",
+      "request": { "method": "location.set", "params": { "lat": 123, "lon": 0 } },
+      "error": { "code": "INVALID_PARAMS", "message": "<string>", "fix": "<string>", "detail": "<string>" }
+    },
+    {
+      "name": "status with no route loaded",
+      "request": { "method": "playback.status" },
+      "result": { "state": "idle", "distanceM": 0, "lengthM": 0, "progress": 0, "speedKmh": 0, "lap": 0, "position": null }
+    },
+    {
+      "name": "start with no route loaded fails",
+      "request": { "method": "playback.start" },
+      "error": { "code": "NO_ROUTE_LOADED", "message": "<string>", "fix": "<string>", "detail": null }
+    },
+    {
+      "name": "load route",
+      "request": {
+        "method": "playback.load",
+        "params": { "points": [[48.8584, 2.2945], [48.8606, 2.2975], [48.8629, 2.3010]], "speedKmh": 50, "loop": false, "jitter": false }
+      },
+      "result": { "lengthM": "<number>", "points": 3 }
+    },
+    {
+      "name": "start",
+      "request": { "method": "playback.start" },
+      "result": { "state": "playing", "distanceM": "<number>", "lengthM": "<number>", "progress": "<number>", "speedKmh": 50, "lap": 0, "position": "<latlon>" }
+    },
+    {
+      "name": "resume while playing fails",
+      "request": { "method": "playback.resume" },
+      "error": { "code": "INVALID_STATE", "message": "<string>", "fix": "<string>", "detail": "<string>" }
+    },
+    {
+      "name": "pause",
+      "request": { "method": "playback.pause" },
+      "result": { "state": "paused", "distanceM": "<number>", "lengthM": "<number>", "progress": "<number>", "speedKmh": 50, "lap": 0, "position": "<latlon>" }
+    },
+    {
+      "name": "change speed",
+      "request": { "method": "playback.setSpeed", "params": { "speedKmh": 16 } },
+      "result": { "state": "paused", "distanceM": "<number>", "lengthM": "<number>", "progress": "<number>", "speedKmh": 16, "lap": 0, "position": "<latlon>" }
+    },
+    {
+      "name": "resume",
+      "request": { "method": "playback.resume" },
+      "result": { "state": "playing", "distanceM": "<number>", "lengthM": "<number>", "progress": "<number>", "speedKmh": 16, "lap": 0, "position": "<latlon>" }
+    },
+    {
+      "name": "stop",
+      "request": { "method": "playback.stop" },
+      "result": { "state": "idle", "distanceM": "<number>", "lengthM": "<number>", "progress": "<number>", "speedKmh": 16, "lap": 0, "position": "<latlon>" }
+    },
+    {
+      "name": "reset to real location",
+      "request": { "method": "location.clear" },
+      "result": {}
+    },
+    {
+      "name": "disconnect",
+      "request": { "method": "device.disconnect" },
+      "result": {}
+    }
+  ],
+  "notifications": [
+    { "method": "location.updated", "params": { "lat": "<number>", "lon": "<number>", "source": "playback" } },
+    { "method": "playback.state", "params": { "state": "finished", "distanceM": "<number>", "lengthM": "<number>", "progress": 1, "speedKmh": "<number>", "lap": "<int>", "position": "<latlon>" } },
+    { "method": "playback.error", "params": { "code": "DEVICE_DISCONNECTED", "message": "<string>", "fix": "<string>", "detail": null } }
+  ]
+}
