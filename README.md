@@ -1,0 +1,78 @@
+# OpenLocate (placeholder name)
+
+OpenLocate is a free, open-source desktop app for Windows and macOS. It is meant to simulate
+the GPS location of an iPhone over USB or Wi-Fi. No accounts, no Apple ID, no servers of ours,
+no telemetry.
+
+## Status: early development
+
+Milestone 1 of 7 is done: the architecture, the Python sidecar (route engine, fake phone and
+JSON-RPC server), and the Tauri and React app scaffold with a developer console.
+
+**The app does not talk to a real iPhone yet.** Real device support is Milestone 2.
+Today it cannot change the location of any phone.
+
+Planned v1 features, not built yet: teleport by search or map click, reset to the real
+location, drive simulation along real roads (walk, bike, drive or custom speed), GPX playback,
+and scheduled location changes.
+
+## Try it without an iPhone
+
+You need Python 3.10 or newer. Run these in a terminal.
+
+1. Go to the sidecar folder and create a virtual environment:
+
+       cd sidecar
+       python3 -m venv .venv
+
+2. Install the sidecar with its developer tools (on Windows, use `.venv\Scripts\pip`):
+
+       .venv/bin/pip install -e ".[dev]"
+
+3. Run the tests:
+
+       .venv/bin/python -m pytest -q
+
+4. Start the sidecar with the fake phone:
+
+       .venv/bin/python -m openlocate --backend mock
+
+5. Type a request and press Enter:
+
+       {"jsonrpc":"2.0","id":1,"method":"device.list"}
+
+   You should get one line of JSON back that includes `"id":1`.
+
+6. Press Ctrl+D to stop. On Windows, press Ctrl+Z and then Enter.
+
+On Windows, the interpreter is `.venv\Scripts\python.exe`.
+
+## Repository layout
+
+- `sidecar/`: Python logic. See `sidecar/README.md` for setup and checks.
+- `app/`: Tauri 2 shell (Rust) and React UI. See `app/README.md` for setup and checks.
+- `protocol/contract.json`: the message contract that both test suites check.
+- `docs/ARCHITECTURE.md`: decisions and the reasons for them. `docs/specs/`: task specs.
+
+## Outside services
+
+The finished app will contact these services. None of this is wired up yet.
+
+- Map tiles from OpenFreeMap.
+- Address search from the public Nominatim API. Its usage policy
+  (<https://operations.osmfoundation.org/policies/nominatim/>) limits the whole application to
+  one request per second, summed over all users, forbids search-as-you-type, and requires an
+  identifying User-Agent. A growing project will need a proxy or another provider.
+- Routing from the OSRM demo server: non-commercial, one request per second, no uptime promise.
+- Apple's signing server, for the developer disk image on iOS 17 and later.
+- Search and routing server addresses will be settings you can change.
+
+## Use with your own device only
+
+Use this app only with your own device. Some apps and games, such as Pokémon Go, ban location
+spoofing and may suspend accounts. Follow the terms of service of any app you use. You take the
+risk of any account action.
+
+## License
+
+GPL-3.0-or-later. The project bundles pymobiledevice3, which is GPL-3.0-or-later. See `LICENSE`.
