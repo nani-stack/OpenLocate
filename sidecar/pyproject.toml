@@ -9,8 +9,12 @@ description = "OpenLocate sidecar: route engine, device backends and JSON-RPC se
 readme = "README.md"
 requires-python = ">=3.10"
 license = "GPL-3.0-or-later"
-# No runtime dependencies: the core uses the standard library only.
-dependencies = []
+# Only openlocate.device.pmd3 imports pymobiledevice3; everything else is standard library.
+# The library releases several times a week and its API moves, so the range is narrow.
+dependencies = [
+    "pymobiledevice3>=11.54,<12",
+    "packaging>=23",
+]
 
 [project.optional-dependencies]
 dev = [

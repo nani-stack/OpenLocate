@@ -45,6 +45,8 @@ Why the logic lives in the sidecar and not in the UI:
 ### 2.1 Device layer: pymobiledevice3 as a library, in a sidecar
 
 Verified by reading the installed source of pymobiledevice3 **11.54.0** (released 2026-11-12).
+It installs and imports on Python 3.14.6 on Windows 11 (checked 2026-11-13), so no older
+Python is needed. The sidecar pins `pymobiledevice3>=11.54,<12`.
 
 | Topic | Finding | Status |
 |---|---|---|
@@ -74,20 +76,36 @@ elevated helper, no named pipes) and lets the sidecar use plain stdio.
   `await clear()`. The older name `DvtSecureSocketProxyService` no longer exists.
 - iOS below 17: `DtSimulateLocation(lockdown)` with the same `set` / `clear`.
 
-**Persistence.** The library's own `simulate-location set` command holds the session open until
-interrupted, which strongly suggests the location reverts when the DVT session closes on iOS 17+.
-Nothing in the docs or issues confirms what happens on unplug. Design consequence: the sidecar
-**owns one long-lived session** and keeps it open while a location is set. If the session drops,
-the UI says so and offers to reconnect and re-apply. **To be confirmed on a real device in
-Milestone 2**, including whether a Wi-Fi session survives unplugging the cable.
+**Persistence.** Tested 2026-11-13 on an iPad Air (M4), iPadOS 27.2, over USB from Windows:
+the simulated location **stays after the DVT session is closed**. Maps still showed the fake
+location after the sidecar disconnected and exited. A `clear` sent from a new session is
+accepted. The sidecar still owns one long-lived session, because that makes each update a
+single message (0.03 s), but closing it is not a reset. Consequences: quitting the app or
+disconnecting leaves the fake location in place, so the UI must say so and offer "Reset to
+real location"; the sidecar does not reset on exit. Still to check: what happens on unplug.
 
 **Developer disk image.** `auto_mount(lockdown)` mounts the classic image below iOS 17 and the
 personalized image on 17+. Personalization contacts Apple's signing server (TSS), so the first
 mount needs internet access. A reboot unmounts the image, so we check on every connect.
 Known trap (issue #2197, iOS 27.2.1): if Xcode is installed it can re-mount an older image.
 
-**Windows requirement.** Apple Mobile Device Service (usbmux) must be present. It comes with
-iTunes or the Apple Devices app. No tunnel driver is needed with the userspace tunnel.
+**Windows requirement.** Apple Mobile Device Service (usbmux, TCP 127.0.0.1:27015) must be
+present. It comes with iTunes or the Apple Devices app. No tunnel driver is needed with the
+userspace tunnel. Observed 2026-11-13 with the Store version of Apple Devices: with the app
+open and no iPhone on USB, nothing listens on 27015. Whether it starts when a phone is plugged
+in is still to be checked. The sidecar reports this as `DEVICE_SERVICE_UNAVAILABLE`.
+
+**Developer disk image source.** The image is downloaded by pymobiledevice3 from
+`raw.githubusercontent.com/doronz88/DeveloperDiskImage` and cached in the user's home folder.
+From iOS 27.0 the library installs it as a cryptex, which needs the RSD tunnel, so on iOS 17+
+we mount through the tunnel, not through plain lockdown.
+
+**How the backend is split.** `device/ios.py` holds the session rules (one device, what
+happens when the session drops) behind a small driver interface and has no library imports.
+`device/pmd3.py` is the only module that imports pymobiledevice3; it translates every library
+exception into a catalogue error. Connect runs: pair (the Trust prompt is shown and the call
+fails at once with `TRUST_REQUIRED` rather than waiting), check Developer Mode (and reveal the
+switch in Settings if it is off), open the tunnel, mount the image, open the DVT channel.
 
 **Wi-Fi.** Lockdown over Wi-Fi uses bonjour discovery after a first USB pairing. Reliability is
 unproven (open issues on Windows discovery). Treated as optional in v1 and tested in Milestone 2.
@@ -109,7 +127,7 @@ The route engine, scheduler and RPC layer only ever see this interface. Backends
 
 - `mock`: a fake phone that records coordinates. Selected with `--backend mock` or
   `OPENLOCATE_BACKEND=mock`. The whole app can be built and tested without an iPhone.
-- `ios`: pymobiledevice3 (Milestone 2).
+- `ios`: pymobiledevice3. The default when no backend is named.
 - v2, phone-only mode (pairing file plus on-device loopback VPN): a third backend. Nothing
   else should need to change.
 
@@ -215,7 +233,7 @@ disk image. All are listed in the README.
 sidecar/                 Python package: openlocate
   src/openlocate/
     engine/              pure route engine (no I/O)
-    device/              DeviceBackend interface, mock backend, ios backend
+    device/              DeviceBackend interface, mock backend, ios backend + pmd3 driver
     rpc/                 JSON-RPC protocol and stdio server
     errors.py            error catalogue
     logging_setup.py
@@ -232,8 +250,9 @@ docs/                    this file, and task specs in docs/specs/
 
 ## 4. Open questions
 
-1. Does a simulated location survive closing the session or unplugging, on iOS 17+? (Test in M2.)
-2. Does the userspace tunnel work end to end on Windows with iOS 27.2.1? (Test in M2.)
+1. Closing the session: the location survives (answered, see 2.1). Unplugging: still open.
+2. The userspace tunnel works end to end on Windows with iPadOS 27.2 over USB (answered:
+   first connect about 7 s including image download and mount, later connects under 2 s).
 3. Is Wi-Fi reconnection reliable enough to offer? (Test in M2.)
 4. Does the PyInstaller build of the userspace tunnel stack need extra hidden imports? (M6.)
 5. macOS: prefer the `native` tunnel or the userspace tunnel? (Decide in M2, macOS pass.)

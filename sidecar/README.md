@@ -14,10 +14,15 @@ Run the checks:
     .venv/bin/ruff check .
     .venv/bin/mypy src
 
+The checks need no iPhone: the iOS backend is tested with a fake driver and a faked usbmux.
+
 Run the sidecar with the fake phone and type requests by hand (Ctrl+D, or Ctrl+Z then Enter
 on Windows, closes stdin and exits):
 
     .venv/bin/python -m openlocate --backend mock
     {"jsonrpc": "2.0", "id": 1, "method": "app.info"}
+
+Without `--backend mock` the sidecar uses the real iPhone backend (`--backend ios`). On Windows
+that needs the Apple Devices app (or iTunes) for Apple's USB service.
 
 Logs go to a rotating file (see `logFile` in the `app.info` reply) and to stderr, never stdout.

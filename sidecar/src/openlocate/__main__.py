@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import BinaryIO
 
 from openlocate import __version__
+from openlocate.device.base import DeviceBackend
 from openlocate.device.mock import MockDevice
 from openlocate.logging_setup import configure_logging
 from openlocate.rpc.handlers import SidecarHandlers
@@ -49,11 +50,26 @@ def _fail(message: str, code: int) -> int:
     return code
 
 
+def _make_backend(backend_name: str) -> DeviceBackend:
+    if backend_name == "mock":
+        return MockDevice()
+    # Imported here so the mock backend starts without loading pymobiledevice3.
+    from openlocate.device.ios import IosDevice
+    from openlocate.device.pmd3 import Pmd3Driver
+
+    return IosDevice(Pmd3Driver())
+
+
 async def _serve(backend_name: str, log_file: Path, stdin: BinaryIO, stdout: BinaryIO) -> None:
-    handlers = SidecarHandlers(MockDevice(), backend_name=backend_name, log_file=log_file)
+    backend = _make_backend(backend_name)
+    handlers = SidecarHandlers(backend, backend_name=backend_name, log_file=log_file)
     server = RpcServer(ThreadedLineReader(stdin), StreamLineWriter(stdout), handlers)
     log.info("sidecar %s started with the %s backend", __version__, backend_name)
-    await server.serve()
+    try:
+        await server.serve()
+    finally:
+        # This does not reset the location: on iOS 17+ it stays until location.clear or a reboot.
+        await backend.disconnect()
     log.info("sidecar stopped")
 
 
@@ -64,12 +80,6 @@ def main(argv: list[str] | None = None) -> int:
         return _fail(
             f"unknown backend {backend_name!r} in {BACKEND_ENV_VAR}. "
             f"Use one of: {', '.join(BACKENDS)}.",
-            EXIT_USAGE,
-        )
-    if backend_name == "ios":
-        return _fail(
-            "the 'ios' backend is not implemented yet (it arrives in Milestone 2). "
-            f"Run with --backend mock or set {BACKEND_ENV_VAR}=mock.",
             EXIT_USAGE,
         )
     if sys.stdin is None or sys.stdout is None:

@@ -13,21 +13,22 @@ import pytest
 from openlocate import __main__ as entry
 
 
-def test_ios_backend_is_not_implemented_yet(capsys: pytest.CaptureFixture[str]) -> None:
-    assert entry.main(["--backend", "ios"]) == 2
-    captured = capsys.readouterr()
-    assert "not implemented" in captured.err
-    assert captured.out == ""
+def test_backend_is_chosen_by_name() -> None:
+    from openlocate.device.ios import IosDevice
+    from openlocate.device.mock import MockDevice
+
+    assert isinstance(entry._make_backend("mock"), MockDevice)
+    assert isinstance(entry._make_backend("ios"), IosDevice)
 
 
-def test_default_backend_comes_from_the_environment(
+def test_unknown_backend_in_the_environment_is_refused(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    monkeypatch.delenv("OPENLOCATE_BACKEND", raising=False)
-    assert entry.main([]) == 2  # defaults to ios
     monkeypatch.setenv("OPENLOCATE_BACKEND", "banana")
     assert entry.main([]) == 2
-    assert "unknown backend" in capsys.readouterr().err
+    captured = capsys.readouterr()
+    assert "unknown backend" in captured.err
+    assert captured.out == ""
 
 
 def run_sidecar(
@@ -76,8 +77,9 @@ def test_end_to_end_subprocess(tmp_path: Path) -> None:
     assert (tmp_path / "sidecar.log").exists()
 
 
-def test_end_to_end_ios_exits_with_code_2(tmp_path: Path) -> None:
-    result = run_sidecar(["--backend", "ios"], b"", tmp_path)
-    assert result.returncode == 2
-    assert result.stdout == b""
-    assert b"not implemented" in result.stderr
+def test_end_to_end_ios_is_the_default_and_starts_without_a_phone(tmp_path: Path) -> None:
+    stdin = json.dumps({"jsonrpc": "2.0", "id": 1, "method": "app.info"}).encode() + b"\n"
+    result = run_sidecar([], stdin, tmp_path)
+    assert result.returncode == 0, result.stderr.decode(errors="replace")
+    (line,) = result.stdout.splitlines()
+    assert json.loads(line)["result"]["backend"] == "ios"

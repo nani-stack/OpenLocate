@@ -16,7 +16,7 @@
     "connection": ["usb", "wifi", "mock"],
     "playbackState": ["idle", "playing", "paused", "finished"],
     "locationSource": ["teleport", "playback"],
-    "errorCode": ["NOT_CONNECTED", "DEVICE_NOT_FOUND", "DEVICE_DISCONNECTED", "TRUST_REQUIRED", "DEVELOPER_MODE_OFF", "INVALID_PARAMS", "INVALID_STATE", "NO_ROUTE_LOADED", "INTERNAL"]
+    "errorCode": ["NOT_CONNECTED", "DEVICE_NOT_FOUND", "DEVICE_DISCONNECTED", "TRUST_REQUIRED", "DEVELOPER_MODE_OFF", "DEVICE_LOCKED", "DEVICE_SERVICE_UNAVAILABLE", "IOS_VERSION_UNSUPPORTED", "DEVELOPER_IMAGE_FAILED", "INVALID_PARAMS", "INVALID_STATE", "NO_ROUTE_LOADED", "INTERNAL"]
   },
   "session": [
     {

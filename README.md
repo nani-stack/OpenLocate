@@ -9,8 +9,10 @@ no telemetry.
 Milestone 1 of 7 is done: the architecture, the Python sidecar (route engine, fake phone and
 JSON-RPC server), and the Tauri and React app scaffold with a developer console.
 
-**The app does not talk to a real iPhone yet.** Real device support is Milestone 2.
-Today it cannot change the location of any phone.
+Milestone 2 (real iPhone support) is in progress. The iPhone backend is written and its logic
+is unit-tested. **It has been run against one real device only** (an iPad on iPadOS 27.2, over
+USB from Windows). Wi-Fi, unplugging the cable, other iOS versions and macOS are not tested yet.
+The app has only a developer console so far, no map.
 
 Planned v1 features, not built yet: teleport by search or map click, reset to the real
 location, drive simulation along real roads (walk, bike, drive or custom speed), GPX playback,
@@ -56,7 +58,7 @@ On Windows, the interpreter is `.venv\Scripts\python.exe`.
 
 ## Outside services
 
-The finished app will contact these services. None of this is wired up yet.
+The finished app will contact these services. Only the two marked "active now" are wired up.
 
 - Map tiles from OpenFreeMap.
 - Address search from the public Nominatim API. Its usage policy
@@ -64,7 +66,10 @@ The finished app will contact these services. None of this is wired up yet.
   one request per second, summed over all users, forbids search-as-you-type, and requires an
   identifying User-Agent. A growing project will need a proxy or another provider.
 - Routing from the OSRM demo server: non-commercial, one request per second, no uptime promise.
-- Apple's signing server, for the developer disk image on iOS 17 and later.
+- GitHub (`raw.githubusercontent.com`, the `doronz88/DeveloperDiskImage` repository), to
+  download the developer disk image the first time an iPhone is connected. This is done by
+  pymobiledevice3 and is active as soon as you connect a real iPhone.
+- Apple's signing server, for the developer disk image on iOS 17 and later (also active now).
 - Search and routing server addresses will be settings you can change.
 
 ## Use with your own device only

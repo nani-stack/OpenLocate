@@ -24,6 +24,10 @@ class ErrorCode(str, Enum):
     DEVICE_DISCONNECTED = "DEVICE_DISCONNECTED"
     TRUST_REQUIRED = "TRUST_REQUIRED"
     DEVELOPER_MODE_OFF = "DEVELOPER_MODE_OFF"
+    DEVICE_LOCKED = "DEVICE_LOCKED"
+    DEVICE_SERVICE_UNAVAILABLE = "DEVICE_SERVICE_UNAVAILABLE"
+    IOS_VERSION_UNSUPPORTED = "IOS_VERSION_UNSUPPORTED"
+    DEVELOPER_IMAGE_FAILED = "DEVELOPER_IMAGE_FAILED"
     INVALID_PARAMS = "INVALID_PARAMS"
     INVALID_STATE = "INVALID_STATE"
     NO_ROUTE_LOADED = "NO_ROUTE_LOADED"
@@ -63,6 +67,25 @@ CATALOGUE: Mapping[ErrorCode, ErrorInfo] = {
         "Developer Mode is turned off on the iPhone.",
         "On the iPhone open Settings → Privacy & Security → Developer Mode, turn it on, "
         "then restart when asked.",
+    ),
+    ErrorCode.DEVICE_LOCKED: ErrorInfo(
+        "The iPhone is locked.",
+        "Unlock the iPhone with its passcode, keep it unlocked, then connect again.",
+    ),
+    ErrorCode.DEVICE_SERVICE_UNAVAILABLE: ErrorInfo(
+        "Apple's device service is not running on this computer.",
+        "On Windows, install the Apple Devices app from the Microsoft Store (or iTunes), open "
+        "it, plug the iPhone in with a USB cable, then refresh the device list.",
+    ),
+    ErrorCode.IOS_VERSION_UNSUPPORTED: ErrorInfo(
+        "This iOS version is not supported.",
+        "iOS 17.0 to 17.3 cannot be used. Update the iPhone to iOS 17.4 or later in "
+        "Settings → General → Software Update, then connect again.",
+    ),
+    ErrorCode.DEVELOPER_IMAGE_FAILED: ErrorInfo(
+        "The developer disk image could not be set up on the iPhone.",
+        "Check that this computer is online (the image is downloaded and signed by Apple the "
+        "first time), keep the iPhone unlocked, then connect again. If Xcode is open, close it.",
     ),
     ErrorCode.INVALID_PARAMS: ErrorInfo(
         "The request had missing or invalid values.",
