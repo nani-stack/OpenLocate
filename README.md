@@ -1,28 +1,98 @@
-# OpenLocate (placeholder name)
+# OpenLocate
 
-OpenLocate is a free, open-source desktop app for Windows and macOS. It is meant to simulate
-the GPS location of an iPhone over USB. No accounts, no Apple ID, no servers of ours,
-no telemetry.
+OpenLocate is a free, open-source desktop app that makes your own iPhone or iPad report a
+location you choose. Type a start and an end address, pick walking, cycling or driving, and
+the device travels that route along real roads in real time. You can also jump straight to a
+place.
 
-## Status: early development
+No account, no Apple ID, no jailbreak, no servers of ours, no telemetry. The device must be
+connected by USB cable the whole time.
 
-Milestone 1 of 7 is done: the architecture, the Python sidecar (route engine, fake phone and
-JSON-RPC server), and the Tauri and React app scaffold with a developer console.
+"OpenLocate" is a working name and may change.
 
-Milestone 2 (real iPhone support) is in progress. The iPhone backend is written and its logic
-is unit-tested. **It has been run against one real device only** (an iPad on iPadOS 27.2, over
-USB from Windows). Other iOS versions and macOS are not tested yet. Wi-Fi is not supported: the cable must stay in.
-The app has a map screen: type a start and an end address (or start from this computer's
-location), choose walking, cycling or driving, get a route along real roads, and travel it in
-real time on the connected device. This was run end to end on that same iPad. The earlier
-developer console is still there, behind a tab.
+## Status: early, tested on one device
 
-Planned v1 features, not built yet: picking places by clicking the map, routes with more
-than two stops, GPX playback, scheduled location changes, and a settings screen.
+This is an early version. Please read this before relying on it.
 
-## Try it without an iPhone
+- **Tested:** Windows 11 with one iPad (iPadOS 27.2) over USB: connecting, jumping to a place,
+  travelling a route, pausing, stopping and resetting.
+- **Not tested:** any iPhone, other iOS versions, a device that has never been connected
+  before, and macOS. They are expected to work but nobody has tried.
+- **Not supported:** Wi-Fi (the cable must stay in), iOS 17.0 to 17.3, and iOS 16 or earlier.
+- **Known rough edge:** after you stop, the device can keep showing the old place for a few
+  minutes, and a device without GPS (a Wi-Fi-only iPad) may need its Wi-Fi turned off and on,
+  or a restart, to find its real position again.
 
-You need Python 3.10 or newer. Run these in a terminal.
+Not built yet: picking places by clicking the map, routes with more than two stops, GPX
+playback, scheduled location changes and a settings screen.
+
+## What you need
+
+- A Windows 10 or 11 PC.
+- The **Apple Devices** app from the Microsoft Store (or iTunes). It provides Apple's USB
+  connection.
+- An iPhone or iPad on iOS 17.4 or later, and its USB cable.
+- An internet connection.
+
+## Install
+
+Download the installer from this repository's Releases page and run it. It installs for your
+user account only and does not ask for administrator rights.
+
+The installer is not code-signed yet, so Windows shows "Windows protected your PC". Choose
+"More info", then "Run anyway". Before you do, compare the file's SHA-256 checksum with the
+one published next to the download.
+
+## Set up your device (once)
+
+1. Open the Apple Devices app once, then plug the device in and unlock it.
+2. When the device asks **Trust This Computer?**, tap Trust and enter your passcode.
+3. In OpenLocate press **Find devices**, then **Connect**. The first try may say Developer
+   Mode is off; that is expected, and it makes the switch appear on the device.
+4. On the device open Settings, Privacy & Security, **Developer Mode**, turn it on, restart
+   when asked, and confirm after the restart.
+5. Press **Connect** again. The first connection takes a little longer.
+
+Developer Mode lowers some of the device's protections. Turn it off again in Settings when
+you stop using OpenLocate.
+
+## Use it
+
+1. Type a start and an end, pressing Enter or **Search** after each, or use **Start from my
+   location**.
+2. Choose **Walk**, **Bike** or **Drive** and press **Get route**.
+3. Press **Start**. Pause, resume or stop at any time.
+4. To go back to your real location, press **Reset to real location**, close the app, or
+   unplug the cable.
+
+While a location is faked, every app on the device sees it, including Find My, Maps and the
+clock's time zone.
+
+## Build it yourself
+
+You need Python 3.10 or newer, Node 22 and Rust 1.90 or newer. See `sidecar/README.md` and
+`app/README.md` for the details.
+
+On Windows, put the repository in a folder with a short path, such as `C:\dev\openlocate`.
+Some of the Python packages have long file names, and installing fails with "No such file or
+directory" when the full path goes past Windows' 260-character limit.
+
+    cd sidecar
+    python -m venv .venv
+    .venv/Scripts/pip install -e ".[dev,build]"        (macOS, Linux: .venv/bin/pip)
+    cd ../app
+    npm install
+    npm run tauri dev                                   (runs the app from source)
+
+To build the installer, from the repository root:
+
+    sidecar/.venv/Scripts/python.exe scripts/build_installer.py
+
+It runs all tests, builds everything and prints the installer's checksum.
+
+## Try the sidecar without an iPhone
+
+For developers. You need Python 3.10 or newer. Run these in a terminal.
 
 1. Go to the sidecar folder and create a virtual environment:
 
@@ -56,29 +126,30 @@ On Windows, the interpreter is `.venv\Scripts\python.exe`.
 - `sidecar/`: Python logic. See `sidecar/README.md` for setup and checks.
 - `app/`: Tauri 2 shell (Rust) and React UI. See `app/README.md` for setup and checks.
 - `protocol/contract.json`: the message contract that both test suites check.
+- `scripts/`: building the installer and the third-party licence lists.
 - `docs/ARCHITECTURE.md`: decisions and the reasons for them. `docs/specs/`: task specs.
+- `docs/RELEASE_PLAN.md`: the plan for releases and the safety rules they must keep.
+- `docs/LEGAL.md`: what distributing the app requires, and what is still open.
 
 ## Outside services
 
-The finished app will contact these services. Only the ones marked "active now" are wired up.
+The app contacts these services and no others. `PRIVACY.md` says what each one is sent.
 
-- Map tiles and the map style from OpenFreeMap (`tiles.openfreemap.org`), active now when the
-  map screen is open.
-- Address search from the public Nominatim API (active now, when you press Search or Enter;
-  the text you searched for is sent). Another server can be set with `OPENLOCATE_SEARCH_URL`. Its usage policy
+- Map tiles and the map style from OpenFreeMap (`tiles.openfreemap.org`), while the map
+  screen is open.
+- Address search from the public Nominatim API, when you press Search or Enter (the text you
+  searched for is sent). Another server can be set with `OPENLOCATE_SEARCH_URL`. Its usage policy
   (<https://operations.osmfoundation.org/policies/nominatim/>) limits the whole application to
   one request per second, summed over all users, forbids search-as-you-type, and requires an
   identifying User-Agent. A growing project will need a proxy or another provider.
-- Routing from the FOSSGIS OSRM servers at `routing.openstreetmap.de` (active now, when you
-  load a route along roads). The start and end points of the route are sent to that server.
+- Routing from the FOSSGIS OSRM servers at `routing.openstreetmap.de`, when you get a route. The start and end points of the route are sent to that server.
   It is a free community service with no uptime promise; the sidecar sends at most one request
   a second and keeps routes it has already fetched on disk. Another server can be set with
   `OPENLOCATE_ROUTER_WALK_URL`, `OPENLOCATE_ROUTER_BIKE_URL` and `OPENLOCATE_ROUTER_DRIVE_URL`.
 - GitHub (`raw.githubusercontent.com`, the `doronz88/DeveloperDiskImage` repository), to
-  download the developer disk image the first time an iPhone is connected. This is done by
-  pymobiledevice3 and is active as soon as you connect a real iPhone.
-- Apple's signing server, for the developer disk image on iOS 17 and later (also active now).
-- Search and routing server addresses will be settings you can change.
+  download the developer disk image the first time a device is connected. This is done by
+  pymobiledevice3.
+- Apple's signing server, for the developer disk image on iOS 17 and later.
 
 ## Use with your own device only
 
