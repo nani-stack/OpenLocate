@@ -27,6 +27,14 @@
     "active": true,
     "targets": "all",
     "license": "GPL-3.0-or-later",
+    "licenseFile": "../../LICENSE",
+    "resources": {
+      "../../sidecar/dist/openlocate-sidecar/": "sidecar/",
+      "../../LICENSE": "legal/LICENSE.txt",
+      "../../TERMS.md": "legal/TERMS.md",
+      "../../PRIVACY.md": "legal/PRIVACY.md",
+      "../../THIRD_PARTY_NOTICES.md": "legal/THIRD_PARTY_NOTICES.md"
+    },
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

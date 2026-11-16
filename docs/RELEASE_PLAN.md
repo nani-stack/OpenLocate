@@ -6,23 +6,27 @@ as steps are done or decisions change.
 
 ## Where it stands
 
-- Runs only from source (`npm run tauri dev`), which needs Python, Node.js and Rust.
-- A release build of the app refuses to start the helper program ("bundled sidecar not
-  available yet").
+- An installer can be built on Windows (see Stage 1). It has not been tried on a PC without
+  developer tools.
 - Tested on one Windows 11 PC with one iPad (iPadOS 27.2). Not tested: an iPhone, a device
   that has never been connected, another PC, macOS.
 - No public repository yet. `origin` is a local folder.
 
 ## Stage 1: a Windows installer that works on a clean PC
 
-1. **Bundle the helper.** Build the Python sidecar with PyInstaller as a one-folder bundle
-   and ship it inside the app through `bundle.resources` (the approach chosen in
-   ARCHITECTURE.md 2.4). Open risk: the device tunnel's networking stack may need extra
-   PyInstaller settings.
-2. **Start the bundled helper in release builds**, and make sure it dies with the app (the
-   planned Windows Job Object).
-3. **Build the installer** with Tauri's bundler (NSIS `.exe`). Include `LICENSE`,
-   `TERMS.md`, `PRIVACY.md` and the third-party licence texts.
+1. **Bundle the helper.** Done 15 November 2026: `sidecar/packaging/build.py` builds a
+   one-folder PyInstaller bundle (about 70 MB) that the app ships through `bundle.resources`.
+   The standalone helper was run against the iPad: connect, a road route, reset.
+2. **Start the bundled helper in release builds.** Done 15 November 2026. Killing the app
+   abruptly was tried while a trip was playing: the helper noticed its input close, ended the
+   device session and exited within 4 seconds. A Windows Job Object would cover the rarer
+   case of a helper that hangs; it is not built.
+3. **Build the installer.** Done 15 November 2026: `npm run tauri build -- --bundles nsis` in
+   `app/` writes `OpenLocate_<version>_x64-setup.exe` (about 30 MB) with the helper,
+   `LICENSE`, `TERMS.md`, `PRIVACY.md` and `THIRD_PARTY_NOTICES.md` inside. The release build
+   was run from the build folder against the iPad (search, route, travel, my location). The
+   installer itself has not been run. Still missing from it: the full third-party licence
+   texts.
 4. **First-run guidance in the app** for what a new user hits before anything works:
    Apple Devices app missing, device not trusted, Developer Mode off, device locked. Today
    these are error banners; they should be a short checklist with the fix for each.
@@ -33,6 +37,45 @@ as steps are done or decisions change.
 
 Done when: a person with no developer tools downloads one file, installs it, and travels a
 route on their own iPhone or iPad by following only what the app tells them.
+
+## Safety rules for what we ship
+
+The app is handed to people who cannot check it themselves, so each release must keep these
+true. The first five were checked on 15 November 2026; re-check them when packaging changes.
+
+- **No administrator rights.** The installer installs for the current user only. The app and
+  its helper never ask for elevation.
+- **No drivers, services or start-up entries.** The helper reaches the device through an
+  in-process tunnel. The kernel network driver that the device library can use (`wintun.dll`)
+  is deliberately left out: `sidecar/packaging/stubs/` replaces the package that loads it,
+  and the build fails if the file appears in the bundle.
+- **Nothing listens on the network.** The helper talks to the app over its own standard
+  input and output, not a port. While connected to a device it holds two UDP sockets bound to
+  `127.0.0.1` for the internal tunnel; they cannot be reached from another computer.
+- **Fewer tools than the library has.** The device library can do far more than set a
+  location (file access, app install, web inspector, shell). The helper exposes only the
+  commands in `protocol/contract.json`, and the build leaves out the library's command-line
+  tools and web inspector.
+- **Only the listed services are contacted** (`PRIVACY.md`). The app's content security
+  policy allows the map tile server and nothing else; the helper's requests are in two files,
+  `net.py` callers and the device library's disk-image download. No telemetry, no automatic
+  update, no crash upload. (`opentelemetry-api` is installed as an unused dependency of a
+  dependency; no exporter is present.)
+- **The helper must not outlive the app.** It exits when the app closes its input, and the
+  app kills it after 2 seconds otherwise. When the app was killed outright, the helper still
+  exited by itself and the device stopped faking its location.
+- **The app's pages get no device permissions except location.** The shell answers every
+  permission request itself: location is allowed (the operating system's own location
+  setting still decides), and camera, microphone, notifications, clipboard and file access
+  are refused.
+- **Builds come from public source.** Until builds are automated and signed, publish a
+  SHA-256 checksum with each installer and say plainly that Windows will warn about an
+  unknown publisher. PyInstaller programs are sometimes flagged by antivirus tools by
+  mistake; check each release on a multi-engine scanner before publishing.
+- **Dependencies should be pinned** to exact versions that have been public for at least two
+  weeks, so a freshly published bad release cannot slip into a build. Not true yet for the
+  helper: `pymobiledevice3` is a version range, and 11.54.0 was three days old when adopted.
+  Still to do: a lock file for the helper's Python packages, used by the installer build.
 
 ## Stage 2: publishing
 

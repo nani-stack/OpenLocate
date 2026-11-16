@@ -30,3 +30,14 @@ Load a route that follows real roads (this contacts the routing server, see the 
     {"jsonrpc": "2.0", "id": 2, "method": "playback.loadRoute", "params": {"waypoints": [[48.8584, 2.2945], [48.8738, 2.2950]], "profile": "walk"}}
 
 Logs go to a rotating file (see `logFile` in the `app.info` reply) and to stderr, never stdout.
+
+## Build the standalone helper
+
+The installed app does not use a Python installation. It ships a standalone copy of this
+sidecar:
+
+    .venv/bin/python -m pip install -e ".[build]"
+    .venv/bin/python packaging/build.py
+
+That writes `dist/openlocate-sidecar/`, which the app's bundle picks up (`npm run tauri build`
+in `app/`). Run it before building an installer and after any change here.

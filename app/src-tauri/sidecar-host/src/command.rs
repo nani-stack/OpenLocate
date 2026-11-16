@@ -30,6 +30,23 @@ pub struct ResolveInputs {
     pub backend: Option<OsString>,
     /// The development virtualenv's interpreter; `Some` only in debug builds.
     pub dev_python: Option<PathBuf>,
+    /// The standalone helper shipped inside the installed app, if the app knows where its
+    /// resources are.
+    pub bundled: Option<PathBuf>,
+}
+
+/// Folder inside the app's resources that holds the standalone helper, and its file name.
+pub const BUNDLED_DIR: &str = "sidecar";
+pub const BUNDLED_NAME: &str = "openlocate-sidecar";
+
+/// Where the standalone helper sits, given the app's resource directory.
+pub fn bundled_sidecar(resource_dir: &Path, windows: bool) -> PathBuf {
+    let name = if windows {
+        format!("{BUNDLED_NAME}.exe")
+    } else {
+        BUNDLED_NAME.to_owned()
+    };
+    resource_dir.join(BUNDLED_DIR).join(name)
 }
 
 /// The interpreter inside `<repo>/sidecar/.venv`, given the Tauri crate's manifest directory
@@ -45,14 +62,19 @@ pub fn dev_venv_python(manifest_dir: &Path, windows: bool) -> PathBuf {
 }
 
 /// Resolves the sidecar command, in order: the `OPENLOCATE_SIDECAR_PYTHON` override, the
-/// development virtualenv (debug builds), otherwise an error because the bundled sidecar does
-/// not exist yet. `exists` is used to report a missing virtualenv clearly.
+/// development virtualenv (debug builds), then the standalone helper shipped with the app.
+/// `exists` is used to report a missing virtualenv or helper clearly.
 pub fn resolve_command(
     inputs: &ResolveInputs,
     exists: impl Fn(&Path) -> bool,
 ) -> Result<SidecarCommand, UiError> {
-    let program = resolve_program(inputs, exists)?;
-    let mut args = vec!["-m".to_owned(), "openlocate".to_owned()];
+    let (program, standalone) = resolve_program(inputs, exists)?;
+    // A Python interpreter is told which module to run; the standalone helper is the module.
+    let mut args = if standalone {
+        Vec::new()
+    } else {
+        vec!["-m".to_owned(), "openlocate".to_owned()]
+    };
     if let Some(backend) = parse_backend(inputs.backend.as_ref())? {
         args.push("--backend".to_owned());
         args.push(backend);
@@ -69,23 +91,26 @@ pub fn resolve_command(
     })
 }
 
+/// The program to run, and whether it is the standalone helper (true) or a Python
+/// interpreter (false).
 fn resolve_program(
     inputs: &ResolveInputs,
     exists: impl Fn(&Path) -> bool,
-) -> Result<PathBuf, UiError> {
+) -> Result<(PathBuf, bool), UiError> {
     if let Some(python) = inputs.python_override.as_ref().filter(|p| !p.is_empty()) {
-        return Ok(PathBuf::from(python));
+        return Ok((PathBuf::from(python), false));
     }
     let Some(dev_python) = inputs.dev_python.as_ref() else {
-        return Err(UiError::new(
-            "SIDECAR_NOT_BUNDLED",
-            "The bundled sidecar is not available yet.",
-            &format!(
-                "Release builds cannot start the sidecar until packaging lands (Milestone 6). \
-                 Set {PYTHON_ENV} to a Python interpreter that has the openlocate package installed."
-            ),
-            None,
-        ));
+        return match inputs.bundled.as_ref() {
+            Some(bundled) if exists(bundled) => Ok((bundled.clone(), true)),
+            missing => Err(UiError::new(
+                "SIDECAR_NOT_BUNDLED",
+                "A part of OpenLocate is missing: the bundled sidecar was not found.",
+                "Install OpenLocate again from the original download. If an antivirus program \
+                 removed the file, restore it or allow OpenLocate, then install again.",
+                missing.map(|path| path.display().to_string()),
+            )),
+        };
     };
     if !exists(dev_python) {
         return Err(UiError::new(
@@ -98,7 +123,7 @@ fn resolve_program(
             Some(dev_python.display().to_string()),
         ));
     }
-    Ok(dev_python.clone())
+    Ok((dev_python.clone(), false))
 }
 
 /// Accepts short lowercase names such as `mock` or `ios`; the sidecar validates the value
@@ -161,6 +186,7 @@ mod tests {
             python_override: Some("/opt/py/python3".into()),
             backend: None,
             dev_python: Some(venv()),
+            bundled: None,
         };
         let command = resolve_command(&inputs, |_| false).unwrap();
         assert_eq!(command.program, PathBuf::from("/opt/py/python3"));
@@ -173,6 +199,7 @@ mod tests {
             python_override: Some(OsString::new()),
             backend: None,
             dev_python: Some(venv()),
+            bundled: None,
         };
         assert_eq!(resolve_command(&inputs, |_| true).unwrap().program, venv());
     }
@@ -203,10 +230,47 @@ mod tests {
     }
 
     #[test]
-    fn release_build_without_override_is_not_bundled_yet() {
+    fn release_build_runs_the_bundled_helper_directly() {
+        let bundled = bundled_sidecar(Path::new("res"), true);
+        assert!(bundled.ends_with(Path::new("sidecar").join("openlocate-sidecar.exe")));
+        assert!(bundled_sidecar(Path::new("res"), false).ends_with("openlocate-sidecar"));
+        let inputs = ResolveInputs {
+            bundled: Some(bundled.clone()),
+            backend: Some("mock".into()),
+            ..ResolveInputs::default()
+        };
+        let command = resolve_command(&inputs, |p| p == bundled).unwrap();
+        assert_eq!(command.program, bundled);
+        assert_eq!(command.args, ["--backend", "mock"]);
+    }
+
+    #[test]
+    fn release_build_without_the_helper_says_to_reinstall() {
         let err = resolve_command(&ResolveInputs::default(), |_| true).unwrap_err();
         assert_eq!(err.code, "SIDECAR_NOT_BUNDLED");
         assert!(err.message.contains("bundled sidecar"));
+        assert_eq!(err.detail, None);
+
+        let inputs = ResolveInputs {
+            bundled: Some(PathBuf::from("res/sidecar/openlocate-sidecar")),
+            ..ResolveInputs::default()
+        };
+        let err = resolve_command(&inputs, |_| false).unwrap_err();
+        assert_eq!(err.code, "SIDECAR_NOT_BUNDLED");
+        assert!(err.fix.contains("Install OpenLocate again"));
+        assert!(err.detail.is_some_and(|d| d.contains("openlocate-sidecar")));
+    }
+
+    #[test]
+    fn debug_build_prefers_the_venv_over_the_bundled_helper() {
+        let inputs = ResolveInputs {
+            dev_python: Some(venv()),
+            bundled: Some(PathBuf::from("res/sidecar/openlocate-sidecar")),
+            ..ResolveInputs::default()
+        };
+        let command = resolve_command(&inputs, |_| true).unwrap();
+        assert_eq!(command.program, venv());
+        assert_eq!(command.args, ["-m", "openlocate"]);
     }
 
     #[test]
@@ -215,6 +279,7 @@ mod tests {
             python_override: Some("python".into()),
             backend: Some("mock".into()),
             dev_python: None,
+            bundled: None,
         };
         let command = resolve_command(&inputs, |_| true).unwrap();
         assert_eq!(command.args, ["-m", "openlocate", "--backend", "mock"]);
@@ -226,6 +291,7 @@ mod tests {
             python_override: Some("python".into()),
             backend: Some(OsString::new()),
             dev_python: None,
+            bundled: None,
         };
         assert_eq!(resolve_command(&inputs, |_| true).unwrap().args.len(), 2);
         for junk in [

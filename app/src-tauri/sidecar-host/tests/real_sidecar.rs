@@ -55,6 +55,7 @@ async fn real_sidecar_with_mock_backend() {
         python_override: None,
         backend: Some("mock".into()),
         dev_python: Some(python),
+        bundled: None,
     };
     let mut command = resolve_command(&inputs, Path::exists).unwrap();
     command.args.push("--log-dir".into());

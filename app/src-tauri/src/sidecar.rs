@@ -4,13 +4,13 @@
 
 use std::path::Path;
 
-use openlocate_sidecar_host::command::{dev_venv_python, BACKEND_ENV, PYTHON_ENV};
+use openlocate_sidecar_host::command::{bundled_sidecar, dev_venv_python, BACKEND_ENV, PYTHON_ENV};
 use openlocate_sidecar_host::{
     resolve_command, EventSink, ResolveInputs, SidecarCommand, Supervisor, Timing, UiError,
 };
 use serde::Serialize;
 use serde_json::Value;
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager};
 
 pub const NOTIFICATION_EVENT: &str = "sidecar://notification";
 pub const EXIT_EVENT: &str = "sidecar://exit";
@@ -54,16 +54,17 @@ impl EventSink for TauriSink {
 
 /// Builds the supervisor for this app. It is not started yet.
 pub fn supervisor(app: AppHandle) -> Supervisor {
+    let resources = app.clone();
     Supervisor::new(
         Box::new(TauriSink { app }),
-        Box::new(resolve),
+        Box::new(move || resolve(&resources)),
         Timing::default(),
         // The sidecar logs to its own file; its stderr is only useful while developing.
         cfg!(debug_assertions),
     )
 }
 
-fn resolve() -> Result<SidecarCommand, UiError> {
+fn resolve(app: &AppHandle) -> Result<SidecarCommand, UiError> {
     // The development virtualenv is located from this crate's source directory, so it only
     // makes sense in debug builds run from a checkout.
     let dev_python = cfg!(debug_assertions)
@@ -72,6 +73,12 @@ fn resolve() -> Result<SidecarCommand, UiError> {
         python_override: std::env::var_os(PYTHON_ENV),
         backend: std::env::var_os(BACKEND_ENV),
         dev_python,
+        // The installed app carries the standalone helper in its resources.
+        bundled: app
+            .path()
+            .resource_dir()
+            .ok()
+            .map(|dir| bundled_sidecar(&dir, cfg!(windows))),
     };
     resolve_command(&inputs, Path::exists)
 }

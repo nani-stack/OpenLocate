@@ -53,6 +53,16 @@ Before each release:
 3. Look for a licence that is not on the list above. A package under a non-free, "source
    available" or non-commercial licence, or under AGPL, needs a decision before it ships.
 
+**Left out on purpose: `wintun.dll`.** The device library depends on `pytun_pmd3`, which
+ships WireGuard's prebuilt Wintun driver library under its own "Prebuilt Binaries License"
+(not an open-source licence). OpenLocate does not use it, and the standalone helper is built
+without it (`sidecar/packaging/stubs/`). Keep it out: shipping it inside a GPL program is a
+question nobody has answered for this project.
+
+**The helper's packaging.** The standalone helper is made with PyInstaller. Its bootloader is
+GPL with an exception that allows bundling programs under any licence, so it adds no
+condition of its own.
+
 **Open: licence texts in the installer.** MIT, BSD, Apache and similar licences require
 their own text and copyright lines to travel with binaries. The notices file lists names and
 licences only. The packaging step (Milestone 6) must collect the licence files of everything

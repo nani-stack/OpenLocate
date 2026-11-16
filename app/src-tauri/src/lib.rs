@@ -4,6 +4,7 @@ mod sidecar;
 
 use openlocate_sidecar_host::{ExitOutcome, Supervisor, UiError};
 use serde_json::Value;
+use tauri::webview::{PermissionKind, PermissionResponse};
 use tauri::{Manager, RunEvent, State};
 
 /// Forwards one JSON-RPC call to the sidecar. `Ok` is the JSON-RPC `result`; `Err` is
@@ -39,6 +40,13 @@ async fn sidecar_restart(supervisor: State<'_, Supervisor>) -> Result<(), Value>
 
 pub fn run() -> Result<(), tauri::Error> {
     let app = tauri::Builder::default()
+        // The map opens at this computer's position, so the app's own pages may ask the
+        // operating system for it (the system's location setting still decides). Nothing
+        // else is granted: no camera, microphone, notifications, clipboard or file access.
+        .on_permission_request(|_, kind| match kind {
+            PermissionKind::Geolocation => PermissionResponse::Allow,
+            _ => PermissionResponse::Deny,
+        })
         .setup(|app| {
             let supervisor = sidecar::supervisor(app.handle().clone());
             // A failed start is remembered by the supervisor, so the UI's first call reports

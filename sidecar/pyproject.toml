@@ -23,6 +23,10 @@ dev = [
     "ruff>=0.6",
     "mypy>=1.11",
 ]
+# Only needed to build the standalone helper that ships inside the app (packaging/build.py).
+build = [
+    "pyinstaller==6.22.3",
+]
 
 [tool.setuptools.dynamic]
 version = { attr = "openlocate.__version__" }
