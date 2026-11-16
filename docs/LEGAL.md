@@ -148,8 +148,11 @@ the picture and needs a new look (in the EU and UK, a legal basis and possibly c
    project's issue tracker".
 2. **The name.** "OpenLocate" is a placeholder. Search trademark registers and app stores for
    the final name before using it.
-3. **A copyright line.** Add "Copyright (C) <year> <owner>" and the standard GPL notice to
-   the README and, ideally, the top of source files.
+3. **A copyright line.** The README carries "Copyright (C) 2026 OpenLocate" and the standard
+   GPL notice (added 15 November 2026). "OpenLocate" is the project's name, not a legal
+   person, so the notice does not say who actually owns the copyright; replace it with the
+   publisher's name once item 1 is settled. Adding the notice to the top of source files is
+   optional and not done.
 4. **Nominatim contact and capacity** (section 3).
 5. **FOSSGIS terms** (section 3).
 6. **The developer disk image** (section 4).

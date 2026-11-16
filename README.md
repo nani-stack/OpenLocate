@@ -88,8 +88,18 @@ risk of any account action. The full terms are in `TERMS.md`.
 
 ## License and legal
 
-GPL-3.0-or-later. The project bundles pymobiledevice3, which is GPL-3.0-or-later. See `LICENSE`.
-The software comes with no warranty.
+Copyright (C) 2026 OpenLocate
+
+This program is free software: you can redistribute it and/or modify it under the terms of the
+GNU General Public License as published by the Free Software Foundation, either version 3 of
+the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See
+the GNU General Public License for more details.
+
+The full licence is in `LICENSE`. The project bundles pymobiledevice3, which is also
+GPL-3.0-or-later.
 
 - `TERMS.md`: terms of use and disclaimer, in plain words.
 - `PRIVACY.md`: what stays on your computer and what is sent to which service.
