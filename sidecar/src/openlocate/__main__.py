@@ -17,10 +17,12 @@ from openlocate import __version__
 from openlocate.device.base import DeviceBackend
 from openlocate.device.mock import MockDevice
 from openlocate.logging_setup import configure_logging
+from openlocate.net import RateLimiter
 from openlocate.routing.cache import RouteCache, default_cache_dir
 from openlocate.routing.osrm import OsrmRouter, servers_from_env
 from openlocate.rpc.handlers import SidecarHandlers
 from openlocate.rpc.server import RpcServer, StreamLineWriter, ThreadedLineReader
+from openlocate.search import NominatimGeocoder, server_from_env
 
 log = logging.getLogger("openlocate")
 
@@ -64,8 +66,14 @@ def _make_backend(backend_name: str) -> DeviceBackend:
 
 async def _serve(backend_name: str, log_file: Path, stdin: BinaryIO, stdout: BinaryIO) -> None:
     backend = _make_backend(backend_name)
-    router = OsrmRouter(servers_from_env(), cache=RouteCache(default_cache_dir()))
-    handlers = SidecarHandlers(backend, backend_name=backend_name, log_file=log_file, router=router)
+    # One limiter for search and routing together: the public servers allow one request a
+    # second for the whole app.
+    limiter = RateLimiter(1.0)
+    router = OsrmRouter(servers_from_env(), limiter=limiter, cache=RouteCache(default_cache_dir()))
+    geocoder = NominatimGeocoder(server_from_env(), limiter=limiter)
+    handlers = SidecarHandlers(
+        backend, backend_name=backend_name, log_file=log_file, router=router, geocoder=geocoder
+    )
     server = RpcServer(ThreadedLineReader(stdin), StreamLineWriter(stdout), handlers)
     log.info("sidecar %s started with the %s backend", __version__, backend_name)
     try:

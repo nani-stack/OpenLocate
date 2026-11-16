@@ -17,7 +17,7 @@
     "playbackState": ["idle", "playing", "paused", "finished"],
     "locationSource": ["teleport", "playback"],
     "routeProfile": ["walk", "bike", "drive"],
-    "errorCode": ["NOT_CONNECTED", "DEVICE_NOT_FOUND", "DEVICE_DISCONNECTED", "TRUST_REQUIRED", "DEVELOPER_MODE_OFF", "DEVICE_LOCKED", "DEVICE_SERVICE_UNAVAILABLE", "IOS_VERSION_UNSUPPORTED", "DEVELOPER_IMAGE_FAILED", "INVALID_PARAMS", "INVALID_STATE", "NO_ROUTE_LOADED", "NO_ROUTE_FOUND", "ROUTING_UNAVAILABLE", "INTERNAL"]
+    "errorCode": ["NOT_CONNECTED", "DEVICE_NOT_FOUND", "DEVICE_DISCONNECTED", "TRUST_REQUIRED", "DEVELOPER_MODE_OFF", "DEVICE_LOCKED", "DEVICE_SERVICE_UNAVAILABLE", "IOS_VERSION_UNSUPPORTED", "DEVELOPER_IMAGE_FAILED", "INVALID_PARAMS", "INVALID_STATE", "NO_ROUTE_LOADED", "NO_ROUTE_FOUND", "ROUTING_UNAVAILABLE", "SEARCH_UNAVAILABLE", "INTERNAL"]
   },
   "session": [
     {
@@ -111,12 +111,22 @@
       "result": { "state": "idle", "distanceM": "<number>", "lengthM": "<number>", "progress": "<number>", "speedKmh": 16, "lap": 0, "position": "<latlon>" }
     },
     {
+      "name": "search for an address",
+      "request": { "method": "search.find", "params": { "query": "Eiffel Tower" } },
+      "result": { "results": [{ "name": "<string>", "lat": "<number>", "lon": "<number>" }] }
+    },
+    {
+      "name": "search with an empty query fails",
+      "request": { "method": "search.find", "params": { "query": "   " } },
+      "error": { "code": "INVALID_PARAMS", "message": "<string>", "fix": "<string>", "detail": "<string>" }
+    },
+    {
       "name": "load a route along roads",
       "request": {
         "method": "playback.loadRoute",
         "params": { "waypoints": [[48.8584, 2.2945], [48.8738, 2.2950]], "profile": "walk", "loop": false, "jitter": false }
       },
-      "result": { "lengthM": "<number>", "points": "<int>", "durationS": "<number>", "speedKmh": "<number>" }
+      "result": { "lengthM": "<number>", "points": "<int>", "durationS": "<number>", "speedKmh": "<number>", "path": [["<number>", "<number>"], ["<number>", "<number>"], ["<number>", "<number>"]] }
     },
     {
       "name": "load a route along roads with a bad profile fails",

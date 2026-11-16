@@ -224,6 +224,9 @@ async def test_load_route_plays_at_the_routers_average_speed() -> None:
         )
         assert sidecar.router.calls == [([EIFFEL, ARC], Profile.WALK)]
         assert loaded["points"] == 3
+        assert loaded["path"][0] == [EIFFEL.lat, EIFFEL.lon]
+        assert loaded["path"][-1] == [ARC.lat, ARC.lon]
+        assert len(loaded["path"]) == 3
         assert loaded["speedKmh"] == pytest.approx(5.4)  # 3000 m in 2000 s
         assert loaded["durationS"] == pytest.approx(loaded["lengthM"] / 1.5)
 

@@ -89,6 +89,15 @@ export interface LoadedRoadRoute {
   points: number;
   durationS: number;
   speedKmh: number;
+  /** The route for drawing, thinned to at most 2000 points. */
+  path: RoutePoint[];
+}
+
+/** One address search hit. */
+export interface Place {
+  name: string;
+  lat: number;
+  lon: number;
 }
 
 /** Every RPC method: its params (`undefined` when it takes none) and its result. */
@@ -99,6 +108,7 @@ export interface Methods {
   "device.disconnect": { params: undefined; result: EmptyResult };
   "location.set": { params: LatLon; result: EmptyResult };
   "location.clear": { params: undefined; result: EmptyResult };
+  "search.find": { params: { query: string }; result: { results: Place[] } };
   "playback.load": { params: PlaybackLoadParams; result: { lengthM: number; points: number } };
   "playback.loadRoute": { params: PlaybackLoadRouteParams; result: LoadedRoadRoute };
   "playback.start": { params: undefined; result: PlaybackStatus };

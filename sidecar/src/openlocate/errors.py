@@ -33,6 +33,7 @@ class ErrorCode(str, Enum):
     NO_ROUTE_LOADED = "NO_ROUTE_LOADED"
     NO_ROUTE_FOUND = "NO_ROUTE_FOUND"
     ROUTING_UNAVAILABLE = "ROUTING_UNAVAILABLE"
+    SEARCH_UNAVAILABLE = "SEARCH_UNAVAILABLE"
     # Also used for protocol-level failures (unreadable message, unknown method): from the
     # user's point of view those are bugs in OpenLocate. The JSON-RPC error code and the
     # detail tell developers which one it was.
@@ -112,6 +113,11 @@ CATALOGUE: Mapping[ErrorCode, ErrorInfo] = {
         "The routing service could not be reached.",
         "Check that this computer is online and try again in a minute. The free routing "
         "service has no uptime promise.",
+    ),
+    ErrorCode.SEARCH_UNAVAILABLE: ErrorInfo(
+        "The address search could not be reached.",
+        "Check that this computer is online and try again in a minute. You can also enter "
+        "coordinates instead of an address.",
     ),
     ErrorCode.INTERNAL: ErrorInfo(
         "Something went wrong inside OpenLocate.",

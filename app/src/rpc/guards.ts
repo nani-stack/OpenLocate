@@ -12,6 +12,7 @@ import {
   type LatLon,
   type LoadedRoadRoute,
   type MethodName,
+  type Place,
   type PlaybackStatus,
   type ResultOf,
   type RpcErrorData,
@@ -90,6 +91,15 @@ export const isRpcErrorData: Guard<RpcErrorData> = exactObject<RpcErrorData>({
   detail: nullable(isString),
 });
 
+const isRoutePoint: Guard<[number, number]> = (v): v is [number, number] =>
+  Array.isArray(v) && v.length === 2 && isFiniteNumber(v[0]) && isFiniteNumber(v[1]);
+
+const isPlace: Guard<Place> = exactObject<Place>({
+  name: isString,
+  lat: isFiniteNumber,
+  lon: isFiniteNumber,
+});
+
 /** One guard per method, for the method's `result`. */
 export const RESULT_GUARDS: { [M in MethodName]: Guard<ResultOf<M>> } = {
   "app.info": isAppInfo,
@@ -98,6 +108,7 @@ export const RESULT_GUARDS: { [M in MethodName]: Guard<ResultOf<M>> } = {
   "device.disconnect": isEmptyResult,
   "location.set": isEmptyResult,
   "location.clear": isEmptyResult,
+  "search.find": exactObject<{ results: Place[] }>({ results: arrayOf(isPlace) }),
   "playback.load": exactObject<{ lengthM: number; points: number }>({
     lengthM: isFiniteNumber,
     points: isInteger,
@@ -107,6 +118,7 @@ export const RESULT_GUARDS: { [M in MethodName]: Guard<ResultOf<M>> } = {
     points: isInteger,
     durationS: isFiniteNumber,
     speedKmh: isFiniteNumber,
+    path: arrayOf(isRoutePoint),
   }),
   "playback.start": isPlaybackStatus,
   "playback.pause": isPlaybackStatus,

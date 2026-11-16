@@ -26,7 +26,6 @@ function describeStatus(status: SidecarStatus): string {
 export function Header({ status, info, restarting, onRestart }: Props) {
   return (
     <header className="header">
-      <h1>OpenLocate</h1>
       <dl className="facts">
         <dt>Sidecar</dt>
         <dd className={`status status-${status.kind}`}>

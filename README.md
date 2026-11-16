@@ -12,14 +12,13 @@ JSON-RPC server), and the Tauri and React app scaffold with a developer console.
 Milestone 2 (real iPhone support) is in progress. The iPhone backend is written and its logic
 is unit-tested. **It has been run against one real device only** (an iPad on iPadOS 27.2, over
 USB from Windows). Other iOS versions and macOS are not tested yet. Wi-Fi is not supported: the cable must stay in.
-The app has only a developer console so far, no map.
+The app has a map screen: type a start and an end address (or start from this computer's
+location), choose walking, cycling or driving, get a route along real roads, and travel it in
+real time on the connected device. This was run end to end on that same iPad. The earlier
+developer console is still there, behind a tab.
 
-Routes along real roads work in the sidecar (walking, cycling or driving, at the routing
-service's own pace or a speed you choose), checked on that same iPad. The app's console can
-load one between two coordinates; there is no map to pick the points on yet.
-
-Planned v1 features, not built yet: teleport by search or map click, picking a route on a
-map, GPX playback, and scheduled location changes.
+Planned v1 features, not built yet: picking places by clicking the map, routes with more
+than two stops, GPX playback, scheduled location changes, and a settings screen.
 
 ## Try it without an iPhone
 
@@ -63,8 +62,10 @@ On Windows, the interpreter is `.venv\Scripts\python.exe`.
 
 The finished app will contact these services. Only the ones marked "active now" are wired up.
 
-- Map tiles from OpenFreeMap.
-- Address search from the public Nominatim API. Its usage policy
+- Map tiles and the map style from OpenFreeMap (`tiles.openfreemap.org`), active now when the
+  map screen is open.
+- Address search from the public Nominatim API (active now, when you press Search or Enter;
+  the text you searched for is sent). Another server can be set with `OPENLOCATE_SEARCH_URL`. Its usage policy
   (<https://operations.osmfoundation.org/policies/nominatim/>) limits the whole application to
   one request per second, summed over all users, forbids search-as-you-type, and requires an
   identifying User-Agent. A growing project will need a proxy or another provider.
@@ -83,8 +84,18 @@ The finished app will contact these services. Only the ones marked "active now" 
 
 Use this app only with your own device. Some apps and games, such as Pokémon Go, ban location
 spoofing and may suspend accounts. Follow the terms of service of any app you use. You take the
-risk of any account action.
+risk of any account action. The full terms are in `TERMS.md`.
 
-## License
+## License and legal
 
 GPL-3.0-or-later. The project bundles pymobiledevice3, which is GPL-3.0-or-later. See `LICENSE`.
+The software comes with no warranty.
+
+- `TERMS.md`: terms of use and disclaimer, in plain words.
+- `PRIVACY.md`: what stays on your computer and what is sent to which service.
+- `THIRD_PARTY_NOTICES.md`: the third-party software the app is built from, with licences.
+- `docs/LEGAL.md`: notes for maintainers on what distributing the app requires, including
+  questions that are still open.
+
+OpenLocate is not affiliated with or endorsed by Apple Inc. iPhone and iPad are trademarks of
+Apple Inc.

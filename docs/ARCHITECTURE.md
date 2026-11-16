@@ -224,18 +224,40 @@ proxy or another provider. The README must say this.
 
 Geocoding and routing clients live in the sidecar, behind one shared rate limiter.
 
+**Search.** `search.find` takes the text the user typed and returns up to five places
+(`openlocate/search.py`, Nominatim). It shares the one-request-a-second limiter with routing,
+remembers answers for the life of the process, and never logs the query. The UI searches only
+on Enter or the Search button. No results is an empty list; a failure is `SEARCH_UNAVAILABLE`.
+The User-Agent is `OpenLocate/<version>`; the policy asks for a way to contact the app's
+author, so add the project's address there before a public release.
+
+**The map screen** (`app/src/components/TripScreen.tsx`). Two address boxes, a walk / bike /
+drive choice, "Get route", then Start, Pause, Resume and Stop with a progress bar. The map is
+MapLibre GL JS 6 with OpenFreeMap's `dark` style, recoloured in `app/src/mapStyle.ts` to a
+slate-blue night look. MapLibre 6 needs its worker file's address from the bundler
+(`setWorkerUrl`). The app's content security policy allows `tiles.openfreemap.org` and nothing
+else outside the app. The map opens at this computer's own position, read with the webview's
+geolocation; the first request can fail, so "Start from my location" asks again. That
+position leaves the app only if it is used as the start of a route. In a plain browser
+(`npm run dev` without Tauri) a made-up sidecar (`app/src/dev/demoTransport.ts`) keeps the
+screens usable for layout work.
+Checked 2026-11-15 in the real app on Windows against the iPad: both searches, a driving
+route, Start, Pause, Resume, Stop and Reset, with the iPad's dot on the route.
+
 **Why not `router.project-osrm.org`.** That demo server answers every profile with the car
 route: walking, cycling and driving requests between the same two points returned the same
 2442 m, 394 s (checked 2026-11-15). The FOSSGIS servers run three separate OSRM instances and
-gave 2249 m on foot, 2664 m by bike and 2442 m by car for that trip. Their usage terms have
-not been read in full yet; do that before a public release.
+gave 2249 m on foot, 2664 m by bike and 2442 m by car for that trip. Their usage policy
+(attribution with a "fix the map" link, a valid user agent, one request a second, no heavy
+use) and what it means for a distributed app are in `docs/LEGAL.md`.
 
 **How a road route is played.** `playback.loadRoute` takes 2 to 25 waypoints and a profile
 (`walk`, `bike`, `drive`), fetches the path (`openlocate/routing/osrm.py`) and loads it like
 any other route. Without `speedKmh` it is played at the server's own average speed for the
 trip (distance divided by its travel-time estimate), so a walk takes about as long as a real
 walk. The speed is constant along the route: slowing for turns and junctions is not modelled.
-The result does not include the path itself; the map milestone will need a way to fetch it.
+The result includes `path`, the route thinned to at most 2000 points, for drawing; playback
+uses every point.
 Checked 2026-11-15 on the iPad: a driven route from the Eiffel Tower to the Arc de Triomphe
 stayed on the streets in five screenshots. Failures are `NO_ROUTE_FOUND` and
 `ROUTING_UNAVAILABLE`.

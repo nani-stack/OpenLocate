@@ -83,6 +83,15 @@ export function PlaybackPanel({ client, onError }: Props) {
     [client, onError],
   );
 
+  const playing = status?.state === "playing";
+  useEffect(() => {
+    if (!playing) return;
+    const timer = setInterval(() => {
+      client.call("playback.status").then(setStatus, () => undefined);
+    }, 2000);
+    return () => clearInterval(timer);
+  }, [client, playing]);
+
   function currentSpeed(): number | null {
     const speed = resolveSpeedKmh(choice, customText);
     if (!speed.ok) {

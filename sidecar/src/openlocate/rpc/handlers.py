@@ -24,10 +24,13 @@ from openlocate.playback import PlaybackRunner, PlaybackStatus
 from openlocate.routing import MAX_WAYPOINTS, Profile, Router
 from openlocate.rpc.protocol import JsonObject
 from openlocate.rpc.server import Handler, Notifier
+from openlocate.search import Geocoder
 
 log = logging.getLogger(__name__)
 
 MAX_ROUTE_POINTS = 200_000
+# The path returned for drawing is thinned to this many points; playback uses all of them.
+MAX_PATH_POINTS = 2_000
 
 
 # --- parameter validation -------------------------------------------------------------
@@ -110,6 +113,15 @@ def _profile(value: object) -> Profile:
 # --- JSON shapes ----------------------------------------------------------------------
 
 
+def _path_json(points: tuple[LatLon, ...]) -> list[list[float]]:
+    """The route for drawing on a map: at most MAX_PATH_POINTS, always with both ends."""
+    if len(points) > MAX_PATH_POINTS:
+        last = len(points) - 1
+        step = last / (MAX_PATH_POINTS - 1)
+        points = tuple(points[round(i * step)] for i in range(MAX_PATH_POINTS))
+    return [[p.lat, p.lon] for p in points]
+
+
 def _lat_lon_json(point: LatLon | None) -> JsonObject | None:
     return None if point is None else {"lat": point.lat, "lon": point.lon}
 
@@ -150,6 +162,7 @@ class SidecarHandlers:
         backend_name: str,
         log_file: Path | None,
         router: Router | None = None,
+        geocoder: Geocoder | None = None,
         tick_seconds: float = 1.0,
         clock: Callable[[], float] | None = None,
         sleep: Callable[[float], Awaitable[None]] | None = None,
@@ -158,6 +171,7 @@ class SidecarHandlers:
         self._backend_name = backend_name
         self._log_file = log_file
         self._router = router
+        self._geocoder = geocoder
         runner_options: dict[str, Any] = {}
         if clock is not None:
             runner_options["clock"] = clock
@@ -189,6 +203,7 @@ class SidecarHandlers:
             "device.disconnect": self.device_disconnect,
             "location.set": self.location_set,
             "location.clear": self.location_clear,
+            "search.find": self.search_find,
             "playback.load": self.playback_load,
             "playback.loadRoute": self.playback_load_route,
             "playback.start": self.playback_start,
@@ -248,6 +263,22 @@ class SidecarHandlers:
         await self._backend.clear_location()
         return {}
 
+    # search
+
+    async def search_find(self, params: JsonObject) -> JsonObject:
+        """Look an address or place name up. No results is an empty list, not an error."""
+        _check_keys(params, required=("query",))
+        query = _string(params["query"], "query")
+        if self._geocoder is None:
+            raise OpenLocateError(ErrorCode.SEARCH_UNAVAILABLE, "no search service is set up")
+        places = await self._geocoder.find(query)
+        return {
+            "results": [
+                {"name": place.name, "lat": place.position.lat, "lon": place.position.lon}
+                for place in places
+            ]
+        }
+
     # playback
 
     async def playback_load(self, params: JsonObject) -> JsonObject:
@@ -299,6 +330,7 @@ class SidecarHandlers:
             "points": len(route.points),
             "durationS": route.length_m / speed_mps,
             "speedKmh": mps_to_kmh(speed_mps),
+            "path": _path_json(route.points),
         }
 
     async def playback_start(self, params: JsonObject) -> JsonObject:

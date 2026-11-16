@@ -14,6 +14,7 @@ from openlocate.errors import OpenLocateError
 from openlocate.routing import Profile, RoadRoute
 from openlocate.rpc.handlers import SidecarHandlers
 from openlocate.rpc.server import RpcServer, ThreadedLineReader
+from openlocate.search import Place, normalise_query
 
 # A generous guard for steps that cross a thread boundary. Never reached when things work.
 TIMEOUT_S = 5.0
@@ -153,18 +154,34 @@ class FakeRouter:
         return RoadRoute(tuple(points), distance_m=3000.0, duration_s=2000.0)
 
 
+class FakeGeocoder:
+    """A geocoder with no network: one fixed place, whatever is asked."""
+
+    def __init__(self, places: list[Place] | None = None) -> None:
+        self.places = (
+            [Place("Somewhere, Paris", LatLon(48.8584, 2.2945))] if places is None else places
+        )
+        self.queries: list[str] = []
+
+    async def find(self, query: str) -> list[Place]:
+        self.queries.append(normalise_query(query))
+        return list(self.places)
+
+
 class Sidecar:
     """The real handlers and server, driven over a pipe, with fake time."""
 
     def __init__(self, device: MockDevice, router: FakeRouter | None = None) -> None:
         self.device = device
         self.router = router if router is not None else FakeRouter()
+        self.geocoder = FakeGeocoder()
         self.time = FakeTime()
         self.handlers = SidecarHandlers(
             device,
             backend_name="mock",
             log_file=Path("sidecar.log"),
             router=self.router,
+            geocoder=self.geocoder,
             clock=self.time.clock,
             sleep=self.time.sleep,
         )
