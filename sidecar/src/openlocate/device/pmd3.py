@@ -134,6 +134,18 @@ async def _close_quietly(close: Callable[[], Awaitable[object]], what: str) -> N
         log.debug("ios: closing %s failed: %s: %s", what, type(exc).__name__, exc)
 
 
+class _ConfirmedLocationSimulation(LocationSimulation):
+    """Location simulation whose ``clear`` waits for the device to acknowledge it.
+
+    The library sends ``stopLocationSimulation`` without asking for a reply, so the call returns
+    as soon as the message is queued, before the device has seen it. Asking for a reply makes
+    "reset OK" mean the device answered. iPadOS 27.2 does answer (checked 2026-11-15).
+    """
+
+    async def clear(self) -> None:
+        await self.service.invoke("stopLocationSimulation", expects_reply=True)
+
+
 class _Session(IosSession):
     def __init__(
         self,
@@ -276,7 +288,7 @@ class Pmd3Driver(IosDriver):
         dvt = DvtProvider(rsd)
         stack.push_async_callback(_close_quietly, dvt.close, "DVT")
         await _run(dvt.connect(), "connect", TUNNEL_TIMEOUT_S)
-        location = LocationSimulation(dvt)
+        location = _ConfirmedLocationSimulation(dvt)
         stack.push_async_callback(_close_quietly, location.close, "location channel")
         await _run(location.connect(), "connect", TUNNEL_TIMEOUT_S)
         # The tunnel clears its `rsd` when the transport dies (for example a pulled cable).

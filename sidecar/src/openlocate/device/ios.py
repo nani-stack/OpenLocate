@@ -56,8 +56,9 @@ class IosDevice(DeviceBackend):
     """Owns at most one long-lived session.
 
     The session is kept until disconnect() or until it drops, so each location change costs
-    one message. Closing it does not reset the location (seen on iPadOS 27.2): the device
-    keeps the simulated location until clear_location() is sent, from this or a later session.
+    one message. The simulation lives only as long as the session: when it closes, the device
+    stops simulating by itself (seen in the locationd log on iPadOS 27.2). Apps may keep showing
+    the last simulated position until the device gets a real fix again.
     """
 
     def __init__(self, driver: IosDriver) -> None:

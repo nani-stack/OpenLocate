@@ -68,7 +68,7 @@ async def _serve(backend_name: str, log_file: Path, stdin: BinaryIO, stdout: Bin
     try:
         await server.serve()
     finally:
-        # This does not reset the location: on iOS 17+ it stays until location.clear or a reboot.
+        # Closing the session also ends the simulation: the device stops it by itself.
         await backend.disconnect()
     log.info("sidecar stopped")
 

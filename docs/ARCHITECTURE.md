@@ -1,7 +1,7 @@
 # OpenLocate architecture
 
 OpenLocate (placeholder name) is a free desktop app for Windows and macOS that simulates an
-iPhone's GPS location over USB or Wi-Fi. This document records what we decided, why, and what
+iPhone's GPS location over USB. This document records what we decided, why, and what
 is still unverified. Update it when a decision changes.
 
 Research date: 2026-11-12. Library versions quoted below were current on that date.
@@ -23,7 +23,7 @@ Research date: 2026-11-12. Library versions quoted below were current on that da
 │                                                          ├─ geocode / routing │
 │                                                          └─ file logging      │
 └───────────────────────────────────────────────────────────────────────────────┘
-                                                                  │ USB / Wi-Fi
+                                                                  │ USB        
                                                                   ▼
                                                                iPhone
 ```
@@ -76,24 +76,49 @@ elevated helper, no named pipes) and lets the sidecar use plain stdio.
   `await clear()`. The older name `DvtSecureSocketProxyService` no longer exists.
 - iOS below 17: `DtSimulateLocation(lockdown)` with the same `set` / `clear`.
 
-**Persistence.** Tested 2026-11-13 on an iPad Air (M4), iPadOS 27.2, over USB from Windows:
-the simulated location **stays after the DVT session is closed**. Maps still showed the fake
-location after the sidecar disconnected and exited. A `clear` sent from a new session is
-accepted. The sidecar still owns one long-lived session, because that makes each update a
-single message (0.03 s), but closing it is not a reset. Consequences: quitting the app or
-disconnecting leaves the fake location in place, so the UI must say so and offer "Reset to
-real location"; the sidecar does not reset on exit. Still to check: what happens on unplug.
+**How simulation behaves on the device.** Measured 2026-11-15 on an iPad Air (M4, Wi-Fi only,
+no GPS), iPadOS 27.2, over USB from Windows. The evidence is the device's own log (`locationd`
+lines read with `pymobiledevice3 syslog live`) plus screenshots; an earlier version of this
+section, based on what Maps drew, was wrong.
 
-**Developer disk image.** `auto_mount(lockdown)` mounts the classic image below iOS 17 and the
-personalized image on 17+. Personalization contacts Apple's signing server (TSS), so the first
-mount needs internet access. A reboot unmounts the image, so we check on every connect.
-Known trap (issue #2197, iOS 27.2.1): if Xcode is installed it can re-mount an older image.
+- **Set.** `locationd` logs "request to start location simulation" and then produces a
+  simulated fix every second by itself. One `set` is enough: the dot stayed blue for 75 s with
+  no further updates. A 1.9 km playback at 50 km/h (about one update a second) moved smoothly.
+- **Reset.** `stopLocationSimulation` reaches `locationd` at once ("request to stop location
+  simulation") and the simulated fixes stop within the same second. The library sends it
+  without asking for a reply; the sidecar asks for one, and the device answers.
+- **Closing the session is also a reset.** When the sidecar disconnects or quits, the device
+  stops the simulation by itself, with no `clear` sent. The simulation needs a live session.
+  Pulling the cable ends the session too: the sidecar reports `DEVICE_DISCONNECTED` on the
+  next update, the device leaves the list at once, and reconnecting after replugging takes
+  about 0.5 s.
+- **What the user sees after a stop is the problem.** Apps keep showing the last simulated
+  position (Maps: a grey dot, sometimes still blue, or no dot after Maps restarts) until a real
+  fix arrives. On this GPS-less iPad the real fix did not come back by itself, in one case for
+  20 minutes. Turning Wi-Fi off and on brought it back within about two minutes; leaving and
+  rejoining the network also worked; restarting the iPad always did. Why it stalls is not
+  established. `locationd` logs `@ClxWifi, Fix, 0 ... NoValidHorizontalAPs` during the stall,
+  but that line kept appearing after Maps had a real position again, so it is a hint, not
+  proof. Not tested on a device with GPS, where a satellite fix may make this a non-issue.
+- **The clock moves too.** With "Set Automatically" on, the device switches to the time zone
+  of the simulated place, and back only when a real fix returns.
+
+Consequences: there is no "location stays after you quit" mode, so the UI must not promise
+one. After a reset or disconnect the UI should say the device may keep showing the old place
+until it finds its real position, and suggest turning Wi-Fi off and on (allow a couple of
+minutes), then a restart. "Reset
+OK" from the sidecar means the simulation stopped, not that the real position is back.
+
+**Checking a device without looking at it.** `sidecar/scripts/ios_screenshot.py` opens Maps,
+taps its locate button and saves a screenshot. Maps is a weak witness (it reopens on the last
+viewed area and can keep drawing a stale position), so use the `locationd` log for start and stop, and a
+screenshot to confirm that a real position is back.
 
 **Windows requirement.** Apple Mobile Device Service (usbmux, TCP 127.0.0.1:27015) must be
 present. It comes with iTunes or the Apple Devices app. No tunnel driver is needed with the
 userspace tunnel. Observed 2026-11-13 with the Store version of Apple Devices: with the app
-open and no iPhone on USB, nothing listens on 27015. Whether it starts when a phone is plugged
-in is still to be checked. The sidecar reports this as `DEVICE_SERVICE_UNAVAILABLE`.
+open and no iPhone on USB, nothing listens on 27015. With a device plugged in it does listen
+(checked 2026-11-15). The sidecar reports this as `DEVICE_SERVICE_UNAVAILABLE`.
 
 **Developer disk image source.** The image is downloaded by pymobiledevice3 from
 `raw.githubusercontent.com/doronz88/DeveloperDiskImage` and cached in the user's home folder.
@@ -107,8 +132,19 @@ exception into a catalogue error. Connect runs: pair (the Trust prompt is shown 
 fails at once with `TRUST_REQUIRED` rather than waiting), check Developer Mode (and reveal the
 switch in Settings if it is off), open the tunnel, mount the image, open the DVT channel.
 
-**Wi-Fi.** Lockdown over Wi-Fi uses bonjour discovery after a first USB pairing. Reliability is
-unproven (open issues on Windows discovery). Treated as optional in v1 and tested in Milestone 2.
+**Wi-Fi.** Not supported, and dropped from the plan (decided 2026-11-15): the app is USB only.
+What one attempt on that date showed (iPadOS 27.2, Windows 11), kept in case it is revisited:
+- On eduroam (campus WPA2-Enterprise) the PC could not see the iPad at all. On the PC's own
+  mobile hotspot the iPad answered ping and had ports 62078 (lockdown) and 49152 open, but
+  bonjour discovery still found nothing, and usbmux listed no network device.
+- The Apple Devices option "Show this iPad when on Wi-Fi" did not stick. `EnableWifiConnections`
+  read false; setting it over USB (`set_enable_wifi_connections(True)`) worked.
+- With that on, lockdown over TCP by IP address works when the pair record is fetched from
+  usbmux and passed in explicitly.
+- `CoreDeviceTunnelProxy`, the tunnel the sidecar uses, is then refused: the iPad closes the
+  connection during tunnel establish. It appears to be USB only.
+- Not tried: the RemotePairing tunnel (separate pairing, normally found by bonjour). That
+  would be the route to a wireless session.
 
 ### 2.2 The device interface (and room for v2)
 
@@ -250,9 +286,10 @@ docs/                    this file, and task specs in docs/specs/
 
 ## 4. Open questions
 
-1. Closing the session: the location survives (answered, see 2.1). Unplugging: still open.
+1. Closing the session or unplugging stops the simulation (answered, see 2.1). Open: does a
+   device with GPS get its real position back by itself after a stop?
 2. The userspace tunnel works end to end on Windows with iPadOS 27.2 over USB (answered:
    first connect about 7 s including image download and mount, later connects under 2 s).
-3. Is Wi-Fi reconnection reliable enough to offer? (Test in M2.)
+3. Wi-Fi: closed. Not with the current tunnel, and dropped from the plan (see 2.1).
 4. Does the PyInstaller build of the userspace tunnel stack need extra hidden imports? (M6.)
 5. macOS: prefer the `native` tunnel or the userspace tunnel? (Decide in M2, macOS pass.)

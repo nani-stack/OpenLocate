@@ -1,7 +1,7 @@
 # OpenLocate (placeholder name)
 
 OpenLocate is a free, open-source desktop app for Windows and macOS. It is meant to simulate
-the GPS location of an iPhone over USB or Wi-Fi. No accounts, no Apple ID, no servers of ours,
+the GPS location of an iPhone over USB. No accounts, no Apple ID, no servers of ours,
 no telemetry.
 
 ## Status: early development
@@ -11,7 +11,7 @@ JSON-RPC server), and the Tauri and React app scaffold with a developer console.
 
 Milestone 2 (real iPhone support) is in progress. The iPhone backend is written and its logic
 is unit-tested. **It has been run against one real device only** (an iPad on iPadOS 27.2, over
-USB from Windows). Wi-Fi, unplugging the cable, other iOS versions and macOS are not tested yet.
+USB from Windows). Other iOS versions and macOS are not tested yet. Wi-Fi is not supported: the cable must stay in.
 The app has only a developer console so far, no map.
 
 Planned v1 features, not built yet: teleport by search or map click, reset to the real
