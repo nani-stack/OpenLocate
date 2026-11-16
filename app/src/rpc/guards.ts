@@ -10,6 +10,7 @@ import {
   type DeviceInfo,
   type EmptyResult,
   type LatLon,
+  type LoadedRoadRoute,
   type MethodName,
   type PlaybackStatus,
   type ResultOf,
@@ -100,6 +101,12 @@ export const RESULT_GUARDS: { [M in MethodName]: Guard<ResultOf<M>> } = {
   "playback.load": exactObject<{ lengthM: number; points: number }>({
     lengthM: isFiniteNumber,
     points: isInteger,
+  }),
+  "playback.loadRoute": exactObject<LoadedRoadRoute>({
+    lengthM: isFiniteNumber,
+    points: isInteger,
+    durationS: isFiniteNumber,
+    speedKmh: isFiniteNumber,
   }),
   "playback.start": isPlaybackStatus,
   "playback.pause": isPlaybackStatus,

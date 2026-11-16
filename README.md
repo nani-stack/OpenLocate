@@ -14,9 +14,12 @@ is unit-tested. **It has been run against one real device only** (an iPad on iPa
 USB from Windows). Other iOS versions and macOS are not tested yet. Wi-Fi is not supported: the cable must stay in.
 The app has only a developer console so far, no map.
 
-Planned v1 features, not built yet: teleport by search or map click, reset to the real
-location, drive simulation along real roads (walk, bike, drive or custom speed), GPX playback,
-and scheduled location changes.
+Routes along real roads work in the sidecar (walking, cycling or driving, at the routing
+service's own pace or a speed you choose), checked on that same iPad. The app's console can
+load one between two coordinates; there is no map to pick the points on yet.
+
+Planned v1 features, not built yet: teleport by search or map click, picking a route on a
+map, GPX playback, and scheduled location changes.
 
 ## Try it without an iPhone
 
@@ -58,14 +61,18 @@ On Windows, the interpreter is `.venv\Scripts\python.exe`.
 
 ## Outside services
 
-The finished app will contact these services. Only the two marked "active now" are wired up.
+The finished app will contact these services. Only the ones marked "active now" are wired up.
 
 - Map tiles from OpenFreeMap.
 - Address search from the public Nominatim API. Its usage policy
   (<https://operations.osmfoundation.org/policies/nominatim/>) limits the whole application to
   one request per second, summed over all users, forbids search-as-you-type, and requires an
   identifying User-Agent. A growing project will need a proxy or another provider.
-- Routing from the OSRM demo server: non-commercial, one request per second, no uptime promise.
+- Routing from the FOSSGIS OSRM servers at `routing.openstreetmap.de` (active now, when you
+  load a route along roads). The start and end points of the route are sent to that server.
+  It is a free community service with no uptime promise; the sidecar sends at most one request
+  a second and keeps routes it has already fetched on disk. Another server can be set with
+  `OPENLOCATE_ROUTER_WALK_URL`, `OPENLOCATE_ROUTER_BIKE_URL` and `OPENLOCATE_ROUTER_DRIVE_URL`.
 - GitHub (`raw.githubusercontent.com`, the `doronz88/DeveloperDiskImage` repository), to
   download the developer disk image the first time an iPhone is connected. This is done by
   pymobiledevice3 and is active as soon as you connect a real iPhone.

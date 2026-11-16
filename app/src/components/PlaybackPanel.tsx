@@ -4,12 +4,25 @@ import { DEMO_ROUTE, DEMO_ROUTE_NAME } from "../demoRoute";
 import {
   formatCoordinate,
   formatDistance,
+  formatDuration,
   formatProgress,
   formatSpeed,
 } from "../format";
 import type { RpcClient } from "../rpc/client";
-import type { LatLon, PlaybackStatus } from "../rpc/types";
-import { resolveSpeedKmh, SPEED_PRESETS_KMH, type SpeedChoice } from "../validation";
+import {
+  ROUTE_PROFILES,
+  type LatLon,
+  type LoadedRoadRoute,
+  type PlaybackStatus,
+  type RouteProfile,
+} from "../rpc/types";
+import {
+  parseCoordinate,
+  resolveSpeedKmh,
+  SPEED_PRESETS_KMH,
+  type CoordinateErrors,
+  type SpeedChoice,
+} from "../validation";
 
 interface Props {
   client: RpcClient;
@@ -19,6 +32,16 @@ interface Props {
 type ControlMethod = "playback.start" | "playback.pause" | "playback.resume" | "playback.stop";
 
 const SPEED_CHOICES: readonly SpeedChoice[] = ["walk", "bike", "drive", "custom"];
+
+const PROFILE_LABELS: Record<RouteProfile, string> = {
+  walk: "Walking",
+  bike: "Cycling",
+  drive: "Driving",
+};
+
+function firstError(errors: CoordinateErrors): string {
+  return errors.lat ?? errors.lon ?? "Check the coordinates.";
+}
 
 function choiceLabel(choice: SpeedChoice): string {
   return choice === "custom" ? "custom" : `${choice} (${SPEED_PRESETS_KMH[choice]} km/h)`;
@@ -33,6 +56,14 @@ export function PlaybackPanel({ client, onError }: Props) {
   const [status, setStatus] = useState<PlaybackStatus | null>(null);
   const [position, setPosition] = useState<LatLon | null>(null);
   const [busy, setBusy] = useState(false);
+  const [fromLat, setFromLat] = useState("");
+  const [fromLon, setFromLon] = useState("");
+  const [toLat, setToLat] = useState("");
+  const [toLon, setToLon] = useState("");
+  const [profile, setProfile] = useState<RouteProfile>("walk");
+  const [fixedSpeed, setFixedSpeed] = useState(false);
+  const [roadError, setRoadError] = useState<string | null>(null);
+  const [road, setRoad] = useState<(LoadedRoadRoute & { profile: RouteProfile }) | null>(null);
 
   useEffect(
     () =>
@@ -83,6 +114,31 @@ export function PlaybackPanel({ client, onError }: Props) {
         loop,
       });
       setLoadedLengthM(result.lengthM);
+      setRoad(null);
+      setStatus(await client.call("playback.status"));
+    });
+  };
+
+  const loadRoad = () => {
+    const from = parseCoordinate(fromLat, fromLon);
+    const to = parseCoordinate(toLat, toLon);
+    if (!from.ok) return setRoadError(`From: ${firstError(from.errors)}`);
+    if (!to.ok) return setRoadError(`To: ${firstError(to.errors)}`);
+    const speedKmh = fixedSpeed ? currentSpeed() : undefined;
+    if (speedKmh === null) return;
+    setRoadError(null);
+    return act("Load road route", async () => {
+      const result = await client.call("playback.loadRoute", {
+        waypoints: [
+          [from.value.lat, from.value.lon],
+          [to.value.lat, to.value.lon],
+        ],
+        profile,
+        ...(speedKmh === undefined ? {} : { speedKmh }),
+        loop,
+      });
+      setLoadedLengthM(result.lengthM);
+      setRoad({ ...result, profile });
       setStatus(await client.call("playback.status"));
     });
   };
@@ -144,6 +200,78 @@ export function PlaybackPanel({ client, onError }: Props) {
         </button>
       </div>
       <p className="muted">Loop takes effect the next time the route is loaded.</p>
+      <h3>Route along roads</h3>
+      <div className="row">
+        <label>
+          From latitude
+          <input
+            inputMode="decimal"
+            value={fromLat}
+            onChange={(e) => setFromLat(e.target.value)}
+            placeholder="48.858400"
+          />
+        </label>
+        <label>
+          From longitude
+          <input
+            inputMode="decimal"
+            value={fromLon}
+            onChange={(e) => setFromLon(e.target.value)}
+            placeholder="2.294500"
+          />
+        </label>
+      </div>
+      <div className="row">
+        <label>
+          To latitude
+          <input
+            inputMode="decimal"
+            value={toLat}
+            onChange={(e) => setToLat(e.target.value)}
+            placeholder="48.873800"
+          />
+        </label>
+        <label>
+          To longitude
+          <input
+            inputMode="decimal"
+            value={toLon}
+            onChange={(e) => setToLon(e.target.value)}
+            placeholder="2.295000"
+          />
+        </label>
+      </div>
+      <div className="row">
+        <label>
+          Travel by
+          <select value={profile} onChange={(e) => setProfile(e.target.value as RouteProfile)}>
+            {ROUTE_PROFILES.map((p) => (
+              <option key={p} value={p}>
+                {PROFILE_LABELS[p]}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="checkbox">
+          <input
+            type="checkbox"
+            checked={fixedSpeed}
+            onChange={(e) => setFixedSpeed(e.target.checked)}
+          />
+          Use the speed chosen above
+        </label>
+        <button type="button" onClick={loadRoad} disabled={busy}>
+          Load road route
+        </button>
+      </div>
+      {roadError && <p className="field-error">{roadError}</p>}
+      <p className="muted">
+        {road
+          ? `${PROFILE_LABELS[road.profile]} route loaded: ${formatDistance(road.lengthM)}, ` +
+            `about ${formatDuration(road.durationS)} at ${formatSpeed(road.speedKmh)}.`
+          : "Without a chosen speed the trip is played at a typical pace for walking, " +
+            "cycling or driving on those roads. The start and end are sent to the routing server."}
+      </p>
       <div className="row">
         <button type="button" onClick={() => control("playback.start", "Start")} disabled={busy}>
           Start

@@ -25,4 +25,8 @@ on Windows, closes stdin and exits):
 Without `--backend mock` the sidecar uses the real iPhone backend (`--backend ios`). On Windows
 that needs the Apple Devices app (or iTunes) for Apple's USB service.
 
+Load a route that follows real roads (this contacts the routing server, see the main README):
+
+    {"jsonrpc": "2.0", "id": 2, "method": "playback.loadRoute", "params": {"waypoints": [[48.8584, 2.2945], [48.8738, 2.2950]], "profile": "walk"}}
+
 Logs go to a rotating file (see `logFile` in the `app.info` reply) and to stderr, never stdout.

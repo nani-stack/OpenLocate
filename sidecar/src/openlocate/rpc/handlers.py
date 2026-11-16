@@ -21,6 +21,7 @@ from openlocate.engine.player import MAX_SPEED_MPS, Fix, kmh_to_mps, mps_to_kmh
 from openlocate.engine.route import Route
 from openlocate.errors import ErrorCode, OpenLocateError
 from openlocate.playback import PlaybackRunner, PlaybackStatus
+from openlocate.routing import MAX_WAYPOINTS, Profile, Router
 from openlocate.rpc.protocol import JsonObject
 from openlocate.rpc.server import Handler, Notifier
 
@@ -84,17 +85,26 @@ def _speed_mps(params: JsonObject) -> float:
     return kmh_to_mps(speed_kmh)
 
 
-def _route_points(value: object) -> list[LatLon]:
+def _route_points(
+    value: object, name: str = "points", maximum: int = MAX_ROUTE_POINTS
+) -> list[LatLon]:
     if not isinstance(value, list):
-        raise _invalid("points must be an array of [lat, lon] pairs")
-    if len(value) > MAX_ROUTE_POINTS:
-        raise _invalid(f"points has {len(value)} entries; the maximum is {MAX_ROUTE_POINTS}")
+        raise _invalid(f"{name} must be an array of [lat, lon] pairs")
+    if len(value) > maximum:
+        raise _invalid(f"{name} has {len(value)} entries; the maximum is {maximum}")
     points: list[LatLon] = []
     for index, pair in enumerate(value):
         if not isinstance(pair, list) or len(pair) != 2:
-            raise _invalid(f"points[{index}] must be a [lat, lon] pair")
-        points.append(_lat_lon(pair[0], pair[1], f"points[{index}]"))
+            raise _invalid(f"{name}[{index}] must be a [lat, lon] pair")
+        points.append(_lat_lon(pair[0], pair[1], f"{name}[{index}]"))
     return points
+
+
+def _profile(value: object) -> Profile:
+    names = [profile.value for profile in Profile]
+    if not isinstance(value, str) or value not in names:
+        raise _invalid(f"profile must be one of: {', '.join(names)}")
+    return Profile(value)
 
 
 # --- JSON shapes ----------------------------------------------------------------------
@@ -139,6 +149,7 @@ class SidecarHandlers:
         *,
         backend_name: str,
         log_file: Path | None,
+        router: Router | None = None,
         tick_seconds: float = 1.0,
         clock: Callable[[], float] | None = None,
         sleep: Callable[[float], Awaitable[None]] | None = None,
@@ -146,6 +157,7 @@ class SidecarHandlers:
         self._backend = backend
         self._backend_name = backend_name
         self._log_file = log_file
+        self._router = router
         runner_options: dict[str, Any] = {}
         if clock is not None:
             runner_options["clock"] = clock
@@ -178,6 +190,7 @@ class SidecarHandlers:
             "location.set": self.location_set,
             "location.clear": self.location_clear,
             "playback.load": self.playback_load,
+            "playback.loadRoute": self.playback_load_route,
             "playback.start": self.playback_start,
             "playback.pause": self.playback_pause,
             "playback.resume": self.playback_resume,
@@ -251,6 +264,42 @@ class SidecarHandlers:
         await self._runner.load(route, speed_mps, loop=loop, jitter=jitter)
         self._emit_state_if_changed()
         return {"lengthM": route.length_m, "points": len(route.points)}
+
+    async def playback_load_route(self, params: JsonObject) -> JsonObject:
+        """Route through the waypoints along real roads, then load the result for playback.
+
+        Without speedKmh the trip is played at the routing service's own average speed for
+        that way of travelling, so it takes about as long as the real trip would.
+        """
+        _check_keys(
+            params, required=("waypoints", "profile"), optional=("speedKmh", "loop", "jitter")
+        )
+        waypoints = _route_points(params["waypoints"], "waypoints", MAX_WAYPOINTS)
+        if len(waypoints) < 2:
+            raise _invalid(f"waypoints needs at least 2 entries, got {len(waypoints)}")
+        profile = _profile(params["profile"])
+        speed_mps = _speed_mps(params) if "speedKmh" in params else None
+        loop = _bool(params.get("loop", False), "loop")
+        use_jitter = _bool(params.get("jitter", False), "jitter")
+        if self._router is None:
+            raise OpenLocateError(ErrorCode.ROUTING_UNAVAILABLE, "no routing service is set up")
+
+        road = await self._router.route(waypoints, profile)
+        try:
+            route = Route(road.points)
+        except ValueError as err:
+            raise OpenLocateError(ErrorCode.NO_ROUTE_FOUND, str(err)) from err
+        if speed_mps is None:
+            speed_mps = min(road.average_speed_mps, MAX_SPEED_MPS)
+        jitter = Jitter(JitterConfig()) if use_jitter else None
+        await self._runner.load(route, speed_mps, loop=loop, jitter=jitter)
+        self._emit_state_if_changed()
+        return {
+            "lengthM": route.length_m,
+            "points": len(route.points),
+            "durationS": route.length_m / speed_mps,
+            "speedKmh": mps_to_kmh(speed_mps),
+        }
 
     async def playback_start(self, params: JsonObject) -> JsonObject:
         return await self._playback_action(params, self._runner.start)

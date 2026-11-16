@@ -5,7 +5,14 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 import { isNotification, isRpcErrorData, RESULT_GUARDS } from "./guards";
-import { CONNECTIONS, DEVICE_STATES, LOCATION_SOURCES, PLAYBACK_STATES, type MethodName } from "./types";
+import {
+  CONNECTIONS,
+  DEVICE_STATES,
+  LOCATION_SOURCES,
+  PLAYBACK_STATES,
+  ROUTE_PROFILES,
+  type MethodName,
+} from "./types";
 
 const CONTRACT_URL = new URL("../../../protocol/contract.json", import.meta.url);
 
@@ -89,6 +96,7 @@ describe("protocol contract", () => {
     expect(contract.enums.connection).toEqual([...CONNECTIONS]);
     expect(contract.enums.playbackState).toEqual([...PLAYBACK_STATES]);
     expect(contract.enums.locationSource).toEqual([...LOCATION_SOURCES]);
+    expect(contract.enums.routeProfile).toEqual([...ROUTE_PROFILES]);
   });
 
   it("the guards are strict: an extra key fails", () => {

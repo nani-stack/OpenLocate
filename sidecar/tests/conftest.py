@@ -9,6 +9,9 @@ from pathlib import Path
 from typing import Any
 
 from openlocate.device.mock import MockDevice
+from openlocate.engine.geo import LatLon
+from openlocate.errors import OpenLocateError
+from openlocate.routing import Profile, RoadRoute
 from openlocate.rpc.handlers import SidecarHandlers
 from openlocate.rpc.server import RpcServer, ThreadedLineReader
 
@@ -132,16 +135,36 @@ class CollectingWriter:
         return [n["params"] for n in self.notifications if n["method"] == method]
 
 
+class FakeRouter:
+    """A router with no network: the waypoints joined by a midpoint, at 1.5 m/s."""
+
+    def __init__(self, error: OpenLocateError | None = None) -> None:
+        self.error = error
+        self.calls: list[tuple[list[LatLon], Profile]] = []
+
+    async def route(self, waypoints: list[LatLon], profile: Profile) -> RoadRoute:
+        self.calls.append((waypoints, profile))
+        if self.error is not None:
+            raise self.error
+        points: list[LatLon] = [waypoints[0]]
+        for a, b in zip(waypoints, waypoints[1:], strict=False):
+            points.append(LatLon((a.lat + b.lat) / 2, (a.lon + b.lon) / 2 + 0.001))
+            points.append(b)
+        return RoadRoute(tuple(points), distance_m=3000.0, duration_s=2000.0)
+
+
 class Sidecar:
     """The real handlers and server, driven over a pipe, with fake time."""
 
-    def __init__(self, device: MockDevice) -> None:
+    def __init__(self, device: MockDevice, router: FakeRouter | None = None) -> None:
         self.device = device
+        self.router = router if router is not None else FakeRouter()
         self.time = FakeTime()
         self.handlers = SidecarHandlers(
             device,
             backend_name="mock",
             log_file=Path("sidecar.log"),
+            router=self.router,
             clock=self.time.clock,
             sleep=self.time.sleep,
         )

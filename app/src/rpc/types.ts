@@ -21,11 +21,13 @@ export const DEVICE_STATES = [
 export const CONNECTIONS = ["usb", "wifi", "mock"] as const;
 export const PLAYBACK_STATES = ["idle", "playing", "paused", "finished"] as const;
 export const LOCATION_SOURCES = ["teleport", "playback"] as const;
+export const ROUTE_PROFILES = ["walk", "bike", "drive"] as const;
 
 export type DeviceState = (typeof DEVICE_STATES)[number];
 export type Connection = (typeof CONNECTIONS)[number];
 export type PlaybackState = (typeof PLAYBACK_STATES)[number];
 export type LocationSource = (typeof LOCATION_SOURCES)[number];
+export type RouteProfile = (typeof ROUTE_PROFILES)[number];
 
 export interface DeviceInfo {
   id: string;
@@ -72,6 +74,23 @@ export interface PlaybackLoadParams {
   jitter?: boolean;
 }
 
+/** Waypoints the sidecar joins along real roads. Without `speedKmh` the trip is played at
+ * the routing service's own average speed for that profile. */
+export interface PlaybackLoadRouteParams {
+  waypoints: RoutePoint[];
+  profile: RouteProfile;
+  speedKmh?: number;
+  loop?: boolean;
+  jitter?: boolean;
+}
+
+export interface LoadedRoadRoute {
+  lengthM: number;
+  points: number;
+  durationS: number;
+  speedKmh: number;
+}
+
 /** Every RPC method: its params (`undefined` when it takes none) and its result. */
 export interface Methods {
   "app.info": { params: undefined; result: AppInfo };
@@ -81,6 +100,7 @@ export interface Methods {
   "location.set": { params: LatLon; result: EmptyResult };
   "location.clear": { params: undefined; result: EmptyResult };
   "playback.load": { params: PlaybackLoadParams; result: { lengthM: number; points: number } };
+  "playback.loadRoute": { params: PlaybackLoadRouteParams; result: LoadedRoadRoute };
   "playback.start": { params: undefined; result: PlaybackStatus };
   "playback.pause": { params: undefined; result: PlaybackStatus };
   "playback.resume": { params: undefined; result: PlaybackStatus };

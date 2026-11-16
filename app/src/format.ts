@@ -14,6 +14,19 @@ export function formatDistance(metres: number): string {
   return `${(metres / 1000).toFixed(2)} km`;
 }
 
+/** Formats seconds as "45 s", "12 min" or "1 h 05 min". */
+export function formatDuration(seconds: number): string {
+  const total = Math.max(0, Math.round(seconds));
+  if (total < 60) {
+    return `${total} s`;
+  }
+  const minutes = Math.round(total / 60);
+  if (minutes < 60) {
+    return `${minutes} min`;
+  }
+  return `${Math.floor(minutes / 60)} h ${String(minutes % 60).padStart(2, "0")} min`;
+}
+
 export function formatSpeed(kmh: number): string {
   return `${kmh.toFixed(1)} km/h`;
 }

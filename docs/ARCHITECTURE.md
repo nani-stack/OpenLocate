@@ -216,13 +216,29 @@ Tauri 2.12 (stable), React, TypeScript, Vite. Rust 1.90 or newer.
 |---|---|---|
 | Map tiles | OpenFreeMap (`https://tiles.openfreemap.org/styles/liberty`) with MapLibre GL JS (BSD-3-Clause) | Free, no key. Attribution shown on the map. Never `tile.openstreetmap.org`. |
 | Search | Nominatim public API | Max 1 request/second across the app. Identifying `User-Agent`. **No search-as-you-type** (forbidden): search runs on Enter or the Search button only. Results cached. Attribution shown. Server URL is a setting, so it can be switched without a software update (a policy requirement). |
-| Routing | OSRM. Default `router.project-osrm.org` | Max 1 request/second. Non-commercial, no uptime promise. URL is a setting so users can self-host. Routes cached on disk by (server, profile, coordinates). |
+| Routing | OSRM, one server per way of travelling. Defaults: the FOSSGIS servers `routing.openstreetmap.de/routed-foot`, `routed-bike`, `routed-car` | Max 1 request/second. Free community service, no uptime promise. Each address can be replaced (environment variables today, a setting later) so users can self-host. Routes cached on disk by request address, newest 200 kept. |
 
 The Nominatim policy is at <https://operations.osmfoundation.org/policies/nominatim/>. Its limits
 apply to the sum of all users of the application, so if this project grows it must move to a
 proxy or another provider. The README must say this.
 
 Geocoding and routing clients live in the sidecar, behind one shared rate limiter.
+
+**Why not `router.project-osrm.org`.** That demo server answers every profile with the car
+route: walking, cycling and driving requests between the same two points returned the same
+2442 m, 394 s (checked 2026-11-15). The FOSSGIS servers run three separate OSRM instances and
+gave 2249 m on foot, 2664 m by bike and 2442 m by car for that trip. Their usage terms have
+not been read in full yet; do that before a public release.
+
+**How a road route is played.** `playback.loadRoute` takes 2 to 25 waypoints and a profile
+(`walk`, `bike`, `drive`), fetches the path (`openlocate/routing/osrm.py`) and loads it like
+any other route. Without `speedKmh` it is played at the server's own average speed for the
+trip (distance divided by its travel-time estimate), so a walk takes about as long as a real
+walk. The speed is constant along the route: slowing for turns and junctions is not modelled.
+The result does not include the path itself; the map milestone will need a way to fetch it.
+Checked 2026-11-15 on the iPad: a driven route from the Eiffel Tower to the Arc de Triomphe
+stayed on the streets in five screenshots. Failures are `NO_ROUTE_FOUND` and
+`ROUTING_UNAVAILABLE`.
 
 ### 2.6 Route playback engine
 

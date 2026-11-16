@@ -14,6 +14,7 @@ from openlocate.device.base import DeviceState
 from openlocate.device.mock import MOCK_DEVICE_ID, MockDevice
 from openlocate.engine.player import PlayerState
 from openlocate.errors import ErrorCode
+from openlocate.routing import Profile
 
 CONTRACT_PATH = Path(__file__).resolve().parents[2] / "protocol" / "contract.json"
 
@@ -71,6 +72,7 @@ def test_enums_match_the_code() -> None:
     assert enums["errorCode"] == [code.value for code in ErrorCode]
     assert enums["deviceState"] == [state.value for state in DeviceState]
     assert enums["playbackState"] == [state.value for state in PlayerState]
+    assert enums["routeProfile"] == [profile.value for profile in Profile]
 
 
 async def test_session_replays() -> None:

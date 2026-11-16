@@ -17,6 +17,8 @@ from openlocate import __version__
 from openlocate.device.base import DeviceBackend
 from openlocate.device.mock import MockDevice
 from openlocate.logging_setup import configure_logging
+from openlocate.routing.cache import RouteCache, default_cache_dir
+from openlocate.routing.osrm import OsrmRouter, servers_from_env
 from openlocate.rpc.handlers import SidecarHandlers
 from openlocate.rpc.server import RpcServer, StreamLineWriter, ThreadedLineReader
 
@@ -62,7 +64,8 @@ def _make_backend(backend_name: str) -> DeviceBackend:
 
 async def _serve(backend_name: str, log_file: Path, stdin: BinaryIO, stdout: BinaryIO) -> None:
     backend = _make_backend(backend_name)
-    handlers = SidecarHandlers(backend, backend_name=backend_name, log_file=log_file)
+    router = OsrmRouter(servers_from_env(), cache=RouteCache(default_cache_dir()))
+    handlers = SidecarHandlers(backend, backend_name=backend_name, log_file=log_file, router=router)
     server = RpcServer(ThreadedLineReader(stdin), StreamLineWriter(stdout), handlers)
     log.info("sidecar %s started with the %s backend", __version__, backend_name)
     try:

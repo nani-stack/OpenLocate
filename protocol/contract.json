@@ -16,7 +16,8 @@
     "connection": ["usb", "wifi", "mock"],
     "playbackState": ["idle", "playing", "paused", "finished"],
     "locationSource": ["teleport", "playback"],
-    "errorCode": ["NOT_CONNECTED", "DEVICE_NOT_FOUND", "DEVICE_DISCONNECTED", "TRUST_REQUIRED", "DEVELOPER_MODE_OFF", "DEVICE_LOCKED", "DEVICE_SERVICE_UNAVAILABLE", "IOS_VERSION_UNSUPPORTED", "DEVELOPER_IMAGE_FAILED", "INVALID_PARAMS", "INVALID_STATE", "NO_ROUTE_LOADED", "INTERNAL"]
+    "routeProfile": ["walk", "bike", "drive"],
+    "errorCode": ["NOT_CONNECTED", "DEVICE_NOT_FOUND", "DEVICE_DISCONNECTED", "TRUST_REQUIRED", "DEVELOPER_MODE_OFF", "DEVICE_LOCKED", "DEVICE_SERVICE_UNAVAILABLE", "IOS_VERSION_UNSUPPORTED", "DEVELOPER_IMAGE_FAILED", "INVALID_PARAMS", "INVALID_STATE", "NO_ROUTE_LOADED", "NO_ROUTE_FOUND", "ROUTING_UNAVAILABLE", "INTERNAL"]
   },
   "session": [
     {
@@ -108,6 +109,22 @@
       "name": "stop",
       "request": { "method": "playback.stop" },
       "result": { "state": "idle", "distanceM": "<number>", "lengthM": "<number>", "progress": "<number>", "speedKmh": 16, "lap": 0, "position": "<latlon>" }
+    },
+    {
+      "name": "load a route along roads",
+      "request": {
+        "method": "playback.loadRoute",
+        "params": { "waypoints": [[48.8584, 2.2945], [48.8738, 2.2950]], "profile": "walk", "loop": false, "jitter": false }
+      },
+      "result": { "lengthM": "<number>", "points": "<int>", "durationS": "<number>", "speedKmh": "<number>" }
+    },
+    {
+      "name": "load a route along roads with a bad profile fails",
+      "request": {
+        "method": "playback.loadRoute",
+        "params": { "waypoints": [[48.8584, 2.2945], [48.8738, 2.2950]], "profile": "teleporter" }
+      },
+      "error": { "code": "INVALID_PARAMS", "message": "<string>", "fix": "<string>", "detail": "<string>" }
     },
     {
       "name": "reset to real location",

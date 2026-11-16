@@ -31,6 +31,8 @@ class ErrorCode(str, Enum):
     INVALID_PARAMS = "INVALID_PARAMS"
     INVALID_STATE = "INVALID_STATE"
     NO_ROUTE_LOADED = "NO_ROUTE_LOADED"
+    NO_ROUTE_FOUND = "NO_ROUTE_FOUND"
+    ROUTING_UNAVAILABLE = "ROUTING_UNAVAILABLE"
     # Also used for protocol-level failures (unreadable message, unknown method): from the
     # user's point of view those are bugs in OpenLocate. The JSON-RPC error code and the
     # detail tell developers which one it was.
@@ -100,6 +102,16 @@ CATALOGUE: Mapping[ErrorCode, ErrorInfo] = {
     ErrorCode.NO_ROUTE_LOADED: ErrorInfo(
         "No route is loaded.",
         "Load a route first, then start playback.",
+    ),
+    ErrorCode.NO_ROUTE_FOUND: ErrorInfo(
+        "No route could be found between those places.",
+        "Move the points closer to a road or path, or pick another way of travelling "
+        "(walking, cycling or driving), then try again.",
+    ),
+    ErrorCode.ROUTING_UNAVAILABLE: ErrorInfo(
+        "The routing service could not be reached.",
+        "Check that this computer is online and try again in a minute. The free routing "
+        "service has no uptime promise.",
     ),
     ErrorCode.INTERNAL: ErrorInfo(
         "Something went wrong inside OpenLocate.",
