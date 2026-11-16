@@ -1,0 +1,14 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "bundle": {
+    "licenseFile": "../../LICENSE",
+    "resources": {
+      "../../sidecar/dist/openlocate-sidecar/": "sidecar/",
+      "../../LICENSE": "legal/LICENSE.txt",
+      "../../TERMS.md": "legal/TERMS.md",
+      "../../PRIVACY.md": "legal/PRIVACY.md",
+      "../../THIRD_PARTY_NOTICES.md": "legal/THIRD_PARTY_NOTICES.md",
+      "legal-texts/THIRD_PARTY_LICENSES.txt": "legal/THIRD_PARTY_LICENSES.txt"
+    }
+  }
+}

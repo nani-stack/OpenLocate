@@ -3,14 +3,24 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { DevicePanel } from "./components/DevicePanel";
 import { ErrorBanner, type ReportedError } from "./components/ErrorBanner";
 import { Header, type SidecarStatus } from "./components/Header";
+import { AboutDialog, FirstRun } from "./components/LegalDialogs";
 import { PlaybackPanel } from "./components/PlaybackPanel";
 import { TeleportPanel } from "./components/TeleportPanel";
 import { TripScreen } from "./components/TripScreen";
+import { acceptTerms, termsAccepted } from "./legal";
 import { toRpcError, type RpcClient } from "./rpc/client";
 import type { AppInfo } from "./rpc/types";
 
 interface Props {
   client: RpcClient;
+}
+
+function storage(): Storage | null {
+  try {
+    return window.localStorage;
+  } catch {
+    return null;
+  }
 }
 
 export function App({ client }: Props) {
@@ -19,6 +29,8 @@ export function App({ client }: Props) {
   const [errors, setErrors] = useState<ReportedError[]>([]);
   const [restarting, setRestarting] = useState(false);
   const [view, setView] = useState<"trip" | "console">("trip");
+  const [accepted, setAccepted] = useState(() => termsAccepted(storage()));
+  const [aboutOpen, setAboutOpen] = useState(false);
   const nextErrorId = useRef(1);
 
   const reportError = useCallback((context: string, error: unknown) => {
@@ -59,6 +71,9 @@ export function App({ client }: Props) {
     }
   }, [client, loadInfo, reportError]);
 
+  // While a dialog is open, the screens behind it cannot be clicked, tabbed to or read out.
+  const blocked = !accepted || aboutOpen;
+
   const tab = (name: "trip" | "console", label: string) => (
     <button
       type="button"
@@ -78,6 +93,9 @@ export function App({ client }: Props) {
           {tab("trip", "Map")}
           {tab("console", "Developer console")}
         </div>
+        <button type="button" className="topbar-end" onClick={() => setAboutOpen(true)}>
+          About and legal
+        </button>
         {status.kind !== "running" && (
           <span className={`status status-${status.kind}`}>
             {status.kind === "starting" ? "Starting…" : "The helper program stopped."}{" "}
@@ -90,11 +108,20 @@ export function App({ client }: Props) {
         )}
       </nav>
       <ErrorBanner errors={errors} onDismiss={dismissError} />
+      {!accepted && (
+        <FirstRun
+          onAccept={() => {
+            acceptTerms(storage());
+            setAccepted(true);
+          }}
+        />
+      )}
+      {aboutOpen && <AboutDialog version={info?.version ?? null} onClose={() => setAboutOpen(false)} />}
       {/* Both screens stay mounted: the trip being planned must survive a look at the console. */}
-      <div className="screen" hidden={view !== "trip"}>
+      <div className="screen" hidden={view !== "trip"} inert={blocked}>
         <TripScreen client={client} onError={reportError} active={view === "trip"} />
       </div>
-      <div className="screen screen-console" hidden={view !== "console"}>
+      <div className="screen screen-console" hidden={view !== "console"} inert={blocked}>
         <Header status={status} info={info} restarting={restarting} onRestart={restart} />
         <main className="panels">
           <DevicePanel client={client} onError={reportError} />

@@ -2,6 +2,7 @@
 
     .venv/Scripts/python.exe -m pip install -e ".[build]"
     .venv/Scripts/python.exe packaging/build.py
+    .venv/Scripts/python.exe packaging/build.py --write-lock    (after changing a package)
 
 The result is the folder sidecar/dist/openlocate-sidecar/, holding openlocate-sidecar(.exe)
 and everything it needs. The app's bundle copies that folder (see tauri.conf.json), so users
@@ -14,11 +15,16 @@ from __future__ import annotations
 import shutil
 import subprocess
 import sys
+from importlib import metadata
 from pathlib import Path
+
+from packaging.markers import default_environment
+from packaging.requirements import Requirement
 
 HERE = Path(__file__).resolve().parent
 SIDECAR = HERE.parent
 NAME = "openlocate-sidecar"
+LOCK = HERE / "requirements.lock"
 
 # Parts of pymobiledevice3 the helper never uses. Leaving them out makes the download smaller
 # and keeps tools such as the web inspector and the remote shell out of what we ship.
@@ -40,7 +46,74 @@ EXCLUDED = [
 NEEDS_METADATA = ["pyimg4"]
 
 
+def installed_versions() -> dict[str, str]:
+    """Every package the helper needs at run time, with the version installed here."""
+    environment = default_environment()
+    found: dict[str, str] = {}
+    queue = ["openlocate"]
+    while queue:
+        try:
+            dist = metadata.distribution(queue.pop())
+        except metadata.PackageNotFoundError:
+            continue
+        key = dist.metadata["Name"].lower().replace("_", "-")
+        if key in found:
+            continue
+        found[key] = dist.version
+        for text in dist.requires or []:
+            requirement = Requirement(text)
+            if requirement.marker is None or requirement.marker.evaluate(
+                {**environment, "extra": ""}
+            ):
+                queue.append(requirement.name)
+    found.pop("openlocate", None)
+    return found
+
+
+def read_lock() -> dict[str, str]:
+    locked: dict[str, str] = {}
+    for line in LOCK.read_text(encoding="utf-8").splitlines():
+        line = line.split("#")[0].strip()
+        if line:
+            name, _, version = line.partition("==")
+            locked[name] = version
+    return locked
+
+
+def write_lock() -> int:
+    versions = installed_versions()
+    lines = [
+        "# Exact versions of everything inside the standalone helper. Written by",
+        "# `packaging/build.py --write-lock`; the build refuses to run if the environment",
+        "# differs. To update a package: install the new version (one that has been public",
+        "# for at least two weeks), run the tests, rewrite this file, and review the diff.",
+    ]
+    lines += [f"{name}=={version}" for name, version in sorted(versions.items())]
+    LOCK.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
+    print(f"wrote {LOCK.name} with {len(versions)} packages")
+    return 0
+
+
+def check_lock() -> bool:
+    """True if what is installed is exactly what the lock file lists."""
+    locked, installed = read_lock(), installed_versions()
+    problems = [
+        f"  {name}: locked {locked.get(name, 'absent')}, installed {installed.get(name, 'absent')}"
+        for name in sorted(set(locked) | set(installed))
+        if locked.get(name) != installed.get(name)
+    ]
+    if problems:
+        print("the environment does not match packaging/requirements.lock:", file=sys.stderr)
+        print("\n".join(problems), file=sys.stderr)
+        print(f"install the locked versions with: pip install -r {LOCK}", file=sys.stderr)
+    return not problems
+
+
 def main() -> int:
+    if "--write-lock" in sys.argv[1:]:
+        return write_lock()
+    if not check_lock():
+        return 1
     dist = SIDECAR / "dist"
     work = SIDECAR / "build" / "pyinstaller"
     shutil.rmtree(dist / NAME, ignore_errors=True)

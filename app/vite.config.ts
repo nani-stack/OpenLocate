@@ -10,6 +10,8 @@ export default defineConfig({
   server: {
     port: DEV_PORT,
     strictPort: true,
+    // The app shows the repository's own TERMS.md, PRIVACY.md and notices (src/legal.ts).
+    fs: { allow: [".."] },
     watch: { ignored: ["**/src-tauri/**"] },
   },
   build: {

@@ -25,13 +25,17 @@ as steps are done or decisions change.
    `app/` writes `OpenLocate_<version>_x64-setup.exe` (about 30 MB) with the helper,
    `LICENSE`, `TERMS.md`, `PRIVACY.md` and `THIRD_PARTY_NOTICES.md` inside. The release build
    was run from the build folder against the iPad (search, route, travel, my location). The
-   installer itself has not been run. Still missing from it: the full third-party licence
-   texts.
-4. **First-run guidance in the app** for what a new user hits before anything works:
-   Apple Devices app missing, device not trusted, Developer Mode off, device locked. Today
-   these are error banners; they should be a short checklist with the fix for each.
-5. **Show the terms once** on first start, with a button to accept, and an About screen with
-   the licence, the open-source notices and the version.
+   installer itself has not been run. It also carries `THIRD_PARTY_LICENSES.txt`, the full
+   licence texts of all third-party packages. Build it with one command:
+   `sidecar/.venv/Scripts/python.exe scripts/build_installer.py`, which runs the tests first
+   and prints the SHA-256 checksum to publish.
+4. **First-run guidance in the app.** A first version is done: a "First time?" checklist on
+   the map screen while no device is connected, covering the Apple Devices app, Trust,
+   Developer Mode and the first connection. It is written from how the process works, not
+   from watching a new user; revise it after the trial in step 6.
+5. **Show the terms once.** Done 15 November 2026: the terms appear on first start and again
+   only if `TERMS_VERSION` in `app/src/legal.ts` changes. "About and legal" shows the terms,
+   the privacy notice and the open-source list. Checked in the release build.
 6. **Test on a clean Windows PC** (no Python, Node.js or Rust) with a device that has never
    been connected, and with an iPhone.
 
@@ -72,10 +76,12 @@ true. The first five were checked on 15 November 2026; re-check them when packag
   SHA-256 checksum with each installer and say plainly that Windows will warn about an
   unknown publisher. PyInstaller programs are sometimes flagged by antivirus tools by
   mistake; check each release on a multi-engine scanner before publishing.
-- **Dependencies should be pinned** to exact versions that have been public for at least two
-  weeks, so a freshly published bad release cannot slip into a build. Not true yet for the
-  helper: `pymobiledevice3` is a version range, and 11.54.0 was three days old when adopted.
-  Still to do: a lock file for the helper's Python packages, used by the installer build.
+- **Dependencies are pinned** to exact versions, so a freshly published bad release cannot
+  slip into a build. The app's JavaScript and Rust packages have lock files; the helper's 88
+  Python packages are listed in `sidecar/packaging/requirements.lock`, and the helper build
+  refuses to run if the environment differs. Adopt a new version only after it has been
+  public for two weeks. One exception on record: `pymobiledevice3` 11.54.0 was three days old
+  when adopted, because it was the first release supporting the test device's iOS.
 
 ## Stage 2: publishing
 

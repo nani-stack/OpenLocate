@@ -63,11 +63,13 @@ question nobody has answered for this project.
 GPL with an exception that allows bundling programs under any licence, so it adds no
 condition of its own.
 
-**Open: licence texts in the installer.** MIT, BSD, Apache and similar licences require
-their own text and copyright lines to travel with binaries. The notices file lists names and
-licences only. The packaging step (Milestone 6) must collect the licence files of everything
-it bundles (for example with `pip-licenses`, `cargo-about` and `license-checker`) and include
-them in the installer, with an "open-source licences" entry in the app.
+**Licence texts in the installer.** MIT, BSD, Apache and similar licences require their own
+text and copyright lines to travel with binaries. `scripts/third_party_licenses.py` collects
+the licence files of every listed package into `THIRD_PARTY_LICENSES.txt`, which the installer
+places in the app's `legal` folder; the app's "About and legal" screen shows the list. On 15
+November 2026, 497 of 537 packages shipped a licence file. The other 40 name a licence but
+ship no file (most are Rust crates for other operating systems); for those the file points to
+standard texts included at its end, without the package's own copyright line.
 
 ## 3. Map data, tiles, search and routing
 
@@ -151,10 +153,9 @@ the picture and needs a new look (in the EU and UK, a legal basis and possibly c
 4. **Nominatim contact and capacity** (section 3).
 5. **FOSSGIS terms** (section 3).
 6. **The developer disk image** (section 4).
-7. **Licence texts in the installer** (section 2).
-8. **Code signing.** Unsigned installers trigger warnings on Windows and are blocked on
+7. **Code signing.** Unsigned installers trigger warnings on Windows and are blocked on
    macOS. Signing needs paid certificates in the publisher's legal name, and Apple's
    notarisation needs an Apple developer account, whose agreement should be read with
    section 4 in mind.
-9. **A lawyer's review** of `TERMS.md`, the disk image question and the app's purpose in the
+8. **A lawyer's review** of `TERMS.md`, the disk image question and the app's purpose in the
    countries where it will be offered.

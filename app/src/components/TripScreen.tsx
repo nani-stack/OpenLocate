@@ -166,6 +166,41 @@ export function TripScreen({ client, onError, active }: Props) {
     <div className="trip">
       <aside className="trip-side">
         <DeviceBar client={client} onError={onError} onConnected={setConnected} active={active} />
+        {!connected && (
+          <details className="card setup">
+            <summary>First time? How to set up your iPhone or iPad</summary>
+            <ol>
+              <li>
+                On Windows, install the <strong>Apple Devices</strong> app from the Microsoft
+                Store (or iTunes) and open it once. A Mac needs nothing extra.
+              </li>
+              <li>
+                Plug the device in with a USB cable and unlock it. It must be on iOS 17.4 or
+                later.
+              </li>
+              <li>
+                When the device asks <strong>Trust This Computer?</strong>, tap Trust and enter
+                your passcode.
+              </li>
+              <li>
+                Press <strong>Find devices</strong>, then <strong>Connect</strong>. The first
+                try may say Developer Mode is off: that is expected.
+              </li>
+              <li>
+                On the device open Settings, Privacy &amp; Security, <strong>Developer
+                Mode</strong>, turn it on, restart when asked, then confirm after the restart.
+              </li>
+              <li>
+                Press <strong>Connect</strong> again. The first connection needs the internet
+                and takes a little longer.
+              </li>
+            </ol>
+            <p className="muted small">
+              Developer Mode lowers some of the device's protections. Turn it off again in
+              Settings when you no longer use OpenLocate.
+            </p>
+          </details>
+        )}
 
         <section className="card">
           <h2>Trip</h2>
@@ -308,7 +343,8 @@ export function TripScreen({ client, onError, active }: Props) {
         <p className="muted small">
           OpenLocate is free software under the GNU GPL version 3 or later and comes with no
           warranty. Use it only with your own device; other apps may forbid a faked location.
-          Not affiliated with Apple. See TERMS.md and PRIVACY.md.
+          Not affiliated with Apple. The terms and the privacy notice are under "About and
+          legal".
         </p>
       </aside>
       <MapView

@@ -39,5 +39,9 @@ sidecar:
     .venv/bin/python -m pip install -e ".[build]"
     .venv/bin/python packaging/build.py
 
-That writes `dist/openlocate-sidecar/`, which the app's bundle picks up (`npm run tauri build`
-in `app/`). Run it before building an installer and after any change here.
+That writes `dist/openlocate-sidecar/`. It refuses to build if the installed packages differ
+from `packaging/requirements.lock`; after deliberately changing a package, run
+`packaging/build.py --write-lock` and review the diff.
+
+To build the whole installer (tests, helper, licence texts, app), run from the repository
+root: `sidecar/.venv/bin/python scripts/build_installer.py`.
